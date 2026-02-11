@@ -7,6 +7,9 @@ import { CreateUsuarioMunicipalDto } from 'src/usuario-municipal/dto/create-usua
 import { UsuarioMunicipal } from 'src/usuario-municipal/entities/usuario-municipal.entity';
 import { SectorMunicipalService } from 'src/sector-municipal/sector-municipal.service';
 import { SectorMunicipal } from 'src/sector-municipal/entities/sector-municipal.entity';
+import { ContribuyenteService } from 'src/contribuyente/contribuyente.service';
+import { CreateContribuyenteDto } from 'src/contribuyente/dto/create-contribuyente.dto';
+import { Contribuyente } from 'src/contribuyente/entities/contribuyente.entity';
 
 
 
@@ -16,7 +19,7 @@ export class AuthService extends HandleService {
 
 //DE MANERA MAS FACIL  Y ESCALABLE CON PASSPORT
 
-constructor(private jwtService:JwtService,private userService:UsuarioMunicipalService, private sectorMunicipalService:SectorMunicipalService){
+constructor(private jwtService:JwtService,private userService:UsuarioMunicipalService, private sectorMunicipalService:SectorMunicipalService,private contribuyenteService:ContribuyenteService){  
     super()
 }
 
@@ -40,17 +43,17 @@ async validateUser(nombre: string, pass: string): Promise<any> {
   }
 
 
-
+//Validamos el usuario y retorna los token y el refresh token
 async login(user: any) {
-  // Crear payload con los datos que ya validó Passport
+ 
   const payload = { username: user.nombre, sub: user.idUsuario ,role:user.RolUser};
 
-  const token = this.jwtService.sign(payload,{ expiresIn: '1h' });//creamos el token con sign de jwt con el payload
+  const token = this.jwtService.sign(payload,{ expiresIn: '15m' });
 
-  const refreshToken = this.jwtService.sign(payload,{ expiresIn: '7d' });//creamos el refreshtoken con sign de jwt con el payload
+  const refreshToken = this.jwtService.sign({payload,type:'refresh'},{ expiresIn: '7d' });
 
 
-  await this.userService.setCurrentRefreshToken(user.idUsuario, refreshToken);//Guardamos el refresh token en la base de datos
+  await this.userService.setCurrentRefreshToken(user.idUsuario, refreshToken);//Funcion en el servicio de usuarios que guarda el refresh token en la base de datos
 
   return { token,refreshToken};
 }
@@ -105,6 +108,31 @@ async create(createUserDto: CreateUsuarioMunicipalDto): Promise<UsuarioMunicipal
 
   // Guardamos y retornamos
   return this.userService.save(newUser);
+}
+
+
+async createContribuyente(createContribuyenteDto: CreateContribuyenteDto): Promise<Contribuyente> {
+
+  const existingContribuyente = await this.contribuyenteService.findByDni(createContribuyenteDto.dni);
+  if (existingContribuyente) {
+    this.handleDuplicate(
+      existingContribuyente,
+      ConflictException,
+      `Contribuyente with dni ${createContribuyenteDto.dni} already exists`
+    );
+  }
+
+
+  const hashedPassword = await bcrypt.hash(createContribuyenteDto.password, 10);
+
+
+  const newContribuyente = this.contribuyenteService.create({
+    ...createContribuyenteDto,
+    password: hashedPassword
+  });
+
+  // Guardamos y retornamos
+  return this.contribuyenteService.save(newContribuyente);
 }
 
 

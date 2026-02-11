@@ -38,27 +38,44 @@ export class SectorMunicipalService  extends HandleService {
     
       
 
-
-
-  findAll() {
-    return `This action returns all sectorMunicipal`;
+  findAll(): Promise<SectorMunicipal[]> {
+    const sectores = this.sectorMunicipalRepository.find();
+    return this.handleException(
+      sectores,
+      NotFoundException,
+      'No sectores found'
+    );
+    
   }
 
- // sector-municipal.service.ts
 async findOne(idSector: number): Promise<SectorMunicipal> {
   const sector = await this.sectorMunicipalRepository.findOneBy({ idSector });
-  if (!sector) {
-    throw new NotFoundException(`SectorMunicipal with ID ${idSector} not found`);
-  }
-  return sector;
+  return this.handleException(
+    sector,
+    NotFoundException,
+    `SectorMunicipal with ID ${idSector} not found`
+  );
 }
 
 
-  update(id: number, updateSectorMunicipalDto: UpdateSectorMunicipalDto) {
-    return `This action updates a #${id} sectorMunicipal`;
+  async update(id: number, updateSectorMunicipalDto: UpdateSectorMunicipalDto): Promise<SectorMunicipal> {
+    let existingSector = await this.sectorMunicipalRepository.findOneBy({ idSector: id });
+    existingSector = this.handleException(
+      existingSector,
+      NotFoundException,
+      `SectorMunicipal with ID ${id} not found`
+    );
+    Object.assign(existingSector, updateSectorMunicipalDto);
+    return this.sectorMunicipalRepository.save(existingSector);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} sectorMunicipal`;
+  async remove(id: number) {
+    let existingSector = await this.sectorMunicipalRepository.findOneBy({ idSector: id });
+    existingSector = this.handleException(
+      existingSector,
+      NotFoundException,
+      `SectorMunicipal with ID ${id} not found`
+    );
+    return this.sectorMunicipalRepository.remove(existingSector);
   }
 }

@@ -7,10 +7,7 @@ import { UpdateContribuyenteDto } from './dto/update-contribuyente.dto';
 export class ContribuyenteController {
   constructor(private readonly contribuyenteService: ContribuyenteService) {}
 
-  @Post()
-  create(@Body() createContribuyenteDto: CreateContribuyenteDto) {
-    return this.contribuyenteService.create(createContribuyenteDto);
-  }
+
 
   @Get()
   findAll() {

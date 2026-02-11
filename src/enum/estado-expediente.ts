@@ -1,0 +1,6 @@
+export enum EstadoExpediente {
+    EN_REVISION = 'EN_REVISION',
+    PENDIENTE_RESUBIDA = 'PENDIENTE_RESUBIDA',
+    APROBADO = 'APROBADO',
+    FINALIZADO = 'FINALIZADO'
+}

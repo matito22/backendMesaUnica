@@ -17,11 +17,11 @@ export class AppConfigService {
     getDatabaseConfig() {
         return {
             type: 'mysql' as const,
-            host: this.configService.get<string>('DB_HOST', 'localhost'),
-            port: this.configService.get<number>('DB_PORT', 3306),
-            username: this.configService.get<string>('DB_USERNAME', 'root'),
-            password: this.configService.get<string>('DB_PASSWORD', '1234'),
-            database: this.configService.get<string>('DB_NAME', 'gestion_expedientes_muni'), 
+            host: this.configService.get<string>('DB_HOST'),
+            port: this.configService.get<number>('DB_PORT'),
+            username: this.configService.get<string>('DB_USERNAME'),
+            password: this.configService.get<string>('DB_PASSWORD'),
+            database: this.configService.get<string>('DB_NAME'), 
             autoLoadEntities: true,
             synchronize: false,
     

@@ -10,6 +10,12 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { UsuarioMunicipalModule } from './usuario-municipal/usuario-municipal.module';
 import { SectorMunicipalModule } from './sector-municipal/sector-municipal.module';
+import { TipoDocumentoModule } from './tipo-documento/tipo-documento.module';
+import { HistorialDocumentoModule } from './historial-documento/historial-documento.module';
+import { DocumentoModule } from './documento/documento.module';
+import { ContribuyenteModule } from './contribuyente/contribuyente.module';
+import { ExpedienteModule } from './expediente/expediente.module';
+import { MensajeModule } from './mensaje/mensaje.module';
 
 @Module({
   imports: [
@@ -23,6 +29,12 @@ import { SectorMunicipalModule } from './sector-municipal/sector-municipal.modul
    ), AuthModule
     ,UsuarioMunicipalModule
     ,SectorMunicipalModule
+    ,TipoDocumentoModule
+    ,HistorialDocumentoModule
+    ,DocumentoModule
+    ,ContribuyenteModule
+    ,ExpedienteModule
+    ,MensajeModule
   ],
   controllers: [AppController],
   providers: [AppService,AppConfigService,

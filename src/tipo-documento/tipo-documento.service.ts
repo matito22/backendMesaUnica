@@ -1,26 +1,85 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateTipoDocumentoDto } from './dto/create-tipo-documento.dto';
 import { UpdateTipoDocumentoDto } from './dto/update-tipo-documento.dto';
+import { HandleService } from 'src/utils/handle.service';
+import { In, Repository } from 'typeorm';
+import { TipoDocumento } from './entities/tipo-documento.entity';
+import { InjectRepository } from '@nestjs/typeorm';
+import { SectorMunicipalService } from 'src/sector-municipal/sector-municipal.service';
 
 @Injectable()
-export class TipoDocumentoService {
-  create(createTipoDocumentoDto: CreateTipoDocumentoDto) {
-    return 'This action adds a new tipoDocumento';
+export class TipoDocumentoService extends HandleService {
+
+  constructor(
+    @InjectRepository(TipoDocumento)
+    private readonly tipoDocumentoRepository: Repository<TipoDocumento>,private readonly sectorMunicipalService:SectorMunicipalService
+  ) {
+    super();
   }
 
-  findAll() {
-    return `This action returns all tipoDocumento`;
+  async create(createTipoDocumentoDto: CreateTipoDocumentoDto) {
+      const existingTipoDocumento = await this.tipoDocumentoRepository.findOneBy({ nombre: createTipoDocumentoDto.nombre });
+        
+         if(existingTipoDocumento){
+          this.handleException(existingTipoDocumento,NotFoundException,`Ya existe un sector con nombre ${createTipoDocumentoDto.nombre}`);
+        }
+
+        const sector= await this.sectorMunicipalService.findOne(createTipoDocumentoDto.idSectorResponsable);
+        
+        if(!sector){
+          this.handleException(sector,NotFoundException,`Ya no existe un sector con id ${createTipoDocumentoDto.idSectorResponsable}`);
+        }
+        
+        
+        const tipoDocumento = this.tipoDocumentoRepository.create({
+          nombre: createTipoDocumentoDto.nombre,
+          descripcion: createTipoDocumentoDto.descripcion,
+          esObligatorio: createTipoDocumentoDto.esObligatorio,
+          activo: createTipoDocumentoDto.activo,
+          idSectorResponsable: sector,
+
+        });
+    
+        return this.tipoDocumentoRepository.save(tipoDocumento);
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} tipoDocumento`;
+  findAll():Promise<TipoDocumento[]> {
+   const tipoDocumento = this.tipoDocumentoRepository.find();
+       return this.handleException(
+         tipoDocumento,
+         NotFoundException,
+         'No tipos de documentos found'
+       );
   }
 
-  update(id: number, updateTipoDocumentoDto: UpdateTipoDocumentoDto) {
-    return `This action updates a #${id} tipoDocumento`;
+  async findOne(idTipoDocumento: number):Promise<TipoDocumento> {
+    const sector = await this.tipoDocumentoRepository.findOneBy({ idTipoDocumento });
+      return this.handleException(
+        sector,
+        NotFoundException,
+        `Tipos de documentos with ID ${idTipoDocumento} not found`
+      );
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} tipoDocumento`;
+  async update(idTipoDocumento: number, updateTipoDocumentoDto: UpdateTipoDocumentoDto): Promise<TipoDocumento> {
+    let existingSector = await this.tipoDocumentoRepository.findOneBy({ idTipoDocumento });
+       existingSector = this.handleException(
+         existingSector,
+         NotFoundException,
+         `SectorMunicipal with ID ${idTipoDocumento} not found`
+       );
+       Object.assign(existingSector, updateTipoDocumentoDto);
+       return this.tipoDocumentoRepository.save(existingSector);
   }
-}
+
+  async remove(idTipoDocumento: number) {
+   let existingSector = await this.tipoDocumentoRepository.findOneBy({ idTipoDocumento });
+       existingSector = this.handleException(
+         existingSector,
+         NotFoundException,
+         `SectorMunicipal with ID ${idTipoDocumento} not found`
+       );
+       return this.tipoDocumentoRepository.remove(existingSector);
+     }
+  }
+

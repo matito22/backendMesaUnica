@@ -8,13 +8,14 @@ import { LocalStrategy } from './local.strategy';
 import { JwtStrategy } from './jwt.strategy';
 import { UsuarioMunicipalModule } from '../usuario-municipal/usuario-municipal.module';
 import { SectorMunicipalModule } from 'src/sector-municipal/sector-municipal.module';
+import { ContribuyenteModule } from 'src/contribuyente/contribuyente.module';
 
 
 
 
 @Module({
   
-  imports: [UsuarioMunicipalModule,PassportModule,SectorMunicipalModule,
+  imports: [UsuarioMunicipalModule,PassportModule,SectorMunicipalModule,ContribuyenteModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET,
       signOptions: { expiresIn: '60m' },

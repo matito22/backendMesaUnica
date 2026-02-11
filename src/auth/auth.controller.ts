@@ -9,6 +9,7 @@ import { RolesGuard } from './roles.guard';
 import { Public } from './public-key';
 import { CreateUsuarioMunicipalDto } from 'src/usuario-municipal/dto/create-usuario-municipal.dto';
 import { LoginDto } from './dto/login.dto';
+import { CreateContribuyenteDto } from 'src/contribuyente/dto/create-contribuyente.dto';
 
 
 
@@ -28,6 +29,16 @@ export class AuthController {
   create(@Body() createUserDto: CreateUsuarioMunicipalDto,) {
   return this.authService.create(createUserDto);
   }
+
+    
+@Public()
+@Post('register/contribuyente')
+  createContribuyente(@Body() createContribuyenteDto: CreateContribuyenteDto,) {
+  return this.authService.createContribuyente(createContribuyenteDto);
+  }
+
+
+
 
 
 @UseGuards(LocalAuthGuard)
@@ -65,10 +76,14 @@ async login(@Request() req,@Res({ passthrough: true }) res: Response) {
 }
 
 //Req representa lo que el cliente envia al servidor: headers, cookies, body, etc, viene cargador con los datos del user que se ha logueado por JWT
+
 //Res es lo que devuelve el servidor, status code,headers,cookies,body
+@Public()//Si no es public, no podes acceder cuando el token ya vencio
 @Post('refresh')
 async refresh(@Req() req, @Res({ passthrough: true }) res: Response) {
   const refreshToken = req.cookies['refresh_token'];//Usamos req para leer las cookies que envio el cliente
+
+
   if (!refreshToken) throw new UnauthorizedException('No refresh token');
 
   const { access_token } = await this.authService.refreshToken(refreshToken);
@@ -78,6 +93,7 @@ async refresh(@Req() req, @Res({ passthrough: true }) res: Response) {
       sameSite: 'lax',
       maxAge: 15 * 60 * 1000,
     });
+
     return { message: 'Access token refreshed' };
   }
 

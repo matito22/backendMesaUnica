@@ -14,7 +14,7 @@ export class UsuarioMunicipalService extends HandleService {
     private userRepository: Repository<UsuarioMunicipal>) {
     super();
   }
-    //Este create lo usamos en authservice para registrar un nuevo usuario
+    
    create(data: Partial<UsuarioMunicipal>): UsuarioMunicipal {
     return this.userRepository.create(data);
   }
@@ -26,7 +26,7 @@ export class UsuarioMunicipalService extends HandleService {
 
   findAll():Promise<UsuarioMunicipal[]> {
     const users = this.userRepository.find();
-    return this.handleException(//handle exception definido en HandleService
+    return this.handleException(
       users,
       NotFoundException,
       'No users found'
@@ -35,7 +35,7 @@ export class UsuarioMunicipalService extends HandleService {
 
  async findOne(idUsuario: number): Promise<UsuarioMunicipal> {
   const user = await this.userRepository.findOneBy({ idUsuario});
-  return this.handleException(//handle exception definido en HandleService
+  return this.handleException(
     user,
     NotFoundException,
     `User with ID ${idUsuario} not found`
@@ -45,7 +45,7 @@ export class UsuarioMunicipalService extends HandleService {
 //Busqueda por nombre utilizada para el login, lanzara exception si no existe
 async findByName(nombre: string): Promise<UsuarioMunicipal> {
   const user = await this.userRepository.findOneBy({ nombre });
-  return this.handleException(//handle exception definido en HandleService
+  return this.handleException(
     user,
     NotFoundException,
     `User with name ${nombre} not found`
@@ -59,22 +59,16 @@ async findByNameOptional(nombre: string): Promise<UsuarioMunicipal | null> {
 
   async update(idUsuario: number, updateUserDto: UpdateUsuarioMunicipalDto): Promise<UsuarioMunicipal> {
     let existingUser = await this.userRepository.findOneBy({ idUsuario });
-
-    // Esto hace dos cosas a la vez:
-    // 1️⃣ Si existingUser es null, lanza NotFoundException
-    // 2️⃣ Si no es null, devuelve el objeto User (ya no null)
       existingUser = this.handleException(
         existingUser,
         NotFoundException,
         `User with ID ${idUsuario} not found`
       );
-
-      // Ahora TypeScript sabe que existingUser no es null aunque ya sabemos que si tira exception no llega a esta línea pero typeScript no lo sabe
       Object.assign(existingUser, updateUserDto);
 
-      //Guardamos los cambios
       return this.userRepository.save(existingUser);
   }
+
 
   async remove(idUsuario: number) {
     let existingUser = await this.userRepository.findOneBy({ idUsuario });

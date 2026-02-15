@@ -1,0 +1,199 @@
+Sistema de Gestión de Expedientes y Documentación Municipal
+
+1. Objetivo del sistema
+El sistema tiene como objetivo centralizar la carga, seguimiento y revisión de la documentación asociada a expedientes municipales, permitiendo la interacción entre:
+* Contribuyentes
+* Mesa de Entrada
+* Distintos sectores de la Municipalidad
+El sistema no reemplaza al GDE, sino que se vincula conceptualmente a él mediante el número de expediente, funcionando como repositorio de documentación, control de estados y canal de comunicación.
+
+2. Alcance del sistema
+Incluye
+* Gestión de contribuyentes
+* Asociación de expedientes a contribuyentes
+* Carga de documentación requerida por sector
+* Control de estado de cada documento
+* Revisión y observaciones por parte de los sectores
+* Carga de comprobantes de pago
+* Comunicación entre sector y contribuyente
+No incluye
+* Generación del número de expediente (provisto por GDE)
+* Gestión interna de documentación de egreso generada por los sectores
+* Aprobaciones formales fuera del sistema (solo se registra el estado)
+
+
+
+
+3. Actores del sistema
+3.1 Contribuyente
+Persona física o jurídica que gestiona uno o más expedientes.
+Responsabilidades
+* Acceder al sistema mediante DNI y clave
+* Visualizar sus expedientes asociados
+* Cargar documentación requerida
+* Visualizar el estado de cada documento
+* Recibir observaciones y notificaciones
+* Cargar comprobantes de pago
+Restricciones
+* No puede eliminar documentos cargados
+* Solo puede volver a cargar un documento si el sector lo habilita
+
+3.2 Mesa de Entrada
+Área responsable del alta inicial y vinculación administrativa.
+Responsabilidades
+* Dar de alta contribuyentes (DNI, nombre, apellido, email)
+* Enviar correo electrónico para generación de clave
+* Asociar expedientes existentes (número GDE) al contribuyente
+* Indicar qué trámites previos fueron presentados y visados
+* Cargar documentación administrativa escaneada
+
+3.3 Sectores Municipales
+Áreas técnicas que revisan la documentación.
+Sectores involucrados:
+* Catastro
+* Infraestructura
+* Planeamiento
+* Medio Ambiente
+* Obras Hídricas
+Responsabilidades
+* Visualizar y descargar documentación cargada
+* Revisar documentación según su competencia
+* Aprobar documentos
+* Solicitar correcciones
+* Generar observaciones dirigidas al contribuyente
+
+4. Estructura del expediente
+Un expediente representa una unidad administrativa asociada a un número GDE y a un contribuyente.
+Cada expediente:
+* Pertenece a un único contribuyente(Relacion muchos a uno)
+* Puede tener múltiples documentos
+* Puede involucrar múltiples sectores
+* Tiene un estado general dependiente del estado de sus documentos()
+
+5. Documentación
+5.1 Tipos de documentación
+La documentación se define por sector y se clasifica en:
+* Documentación de Ingreso
+Archivos que debe cargar el contribuyente
+* Documentación de Egreso
+Generada por los sectores (no se carga en el sistema)
+Solo la documentación de Ingreso forma parte del alcance del sistema.
+
+
+5.2 Catálogo de documentación
+El sistema debe contar con un catálogo configurable de tipos de documentos, donde cada tipo indique:
+* Sector responsable
+* Nombre del documento
+* Si es obligatorio u opcional
+* Observaciones generales
+Este catálogo se utiliza para:
+* Mostrar al contribuyente qué debe presentar(Relacion muchos a uno, un contribuyente puede tener varios documentos)
+* Controlar estados
+* Determinar qué sector puede revisar cada documento(Se puede manejar con ROLES la web, rol de catastro, rol de mesa de entrada, etc)
+
+5.3 Estados de los documentos
+Cada documento tiene un estado independiente:
+* Pendiente de carga
+Documento aún no presentado por el contribuyente
+* Documento cargado
+Archivo subido y a la espera de revisión
+* En revisión
+Documento siendo analizado por el sector
+* Documento aprobado
+Documento validado correctamente
+* Pendiente de resubida
+Documento observado y habilitado para corrección
+
+6. Flujo de carga y revisión de documentación
+1. Mesa de Entrada crea el expediente y lo asocia al contribuyente
+2. El sistema genera automáticamente la lista de documentos requeridos
+3. El contribuyente ingresa y visualiza los documentos pendientes
+4. El contribuyente carga los archivos correspondientes
+5. El sector revisa los documentos
+6. El sector:
+o Aprueba el documento
+o
+o Marca el documento como pendiente de resubida, indicando un motivo
+7. El sistema notifica al contribuyente
+8. El contribuyente vuelve a cargar el documento corregido
+9. El ciclo se repite hasta su aprobación
+
+7. Comunicación con el contribuyente(Esto se puede agregar al final del sistema como una comodidad para el sistema)
+El sistema debe contar con un mecanismo de comunicación interna que permita:
+* Enviar mensajes desde el sector al contribuyente y viceversa
+
+8. Reglas generales
+* Un contribuyente puede tener múltiples expedientes
+* Un expediente pertenece a un solo contribuyente
+* Un documento no puede ser eliminado
+* Toda acción relevante queda registrada
+* Cada sector solo puede intervenir sobre su documentación
+* Los estados determinan las acciones disponibles
+
+9. Estados del expediente 
+El estado del expediente refleja la situación general del trámite, considerando la revisión de todos los documentos obligatorios.
+El estado del expediente se calcula automáticamente a partir del estado de sus documentos. Si hay documentos en revisión, el expediente pasa a En revisión. Si todos los documentos obligatorios están aprobados, el expediente pasa a Aprobado. Si algún documento está pendiente de resubida, el expediente pasa a Pendiente de resubida. Finalizado se asigna solo cuando la Municipalidad cierra administrativamente el expediente.
+
+* En revisión: el expediente tiene documentos cargados que están siendo evaluados por los sectores.
+* Aprobado: todos los documentos obligatorios han sido aprobados por los sectores correspondientes.
+* Pendiente de resubida: algún documento fue rechazado y debe volver a ser cargado por el contribuyente con las correcciones solicitadas.
+* Finalizado: expediente cerrado administrativamente, ya no requiere acciones del contribuyente ni de los sectores.
+
+
+
+10. Relación entre expedientes
+Un expediente puede estar vinculado a otros expedientes previos que constituyen antecedentes o requisitos administrativos.
+Ejemplos:
+* Carpeta de Obra requiere Zonificación aprobada.
+* Carpeta de Obra requiere Prefactibilidad aprobada.
+* Carpeta de Obra requiere Declaración de No Impacto aprobada.
+Reglas:
+* Un expediente puede tener múltiples expedientes vinculados.
+* Un expediente vinculado debe estar en estado Aprobado para que el expediente principal pueda aprobarse.
+* Son diferentes sectores municipales los que aprueban y adjuntan los expedientes extras a la carpeta de obra
+
+
+
+
+11. Tipos de expediente
+Algunos tipos de expedientes vuelven a requerir archivos que quizá ya se cargaron en expedientes aprobados o revisados anteriormente por otro sector, pero en ese caso se deberá volver a cargar. Cuando se aprueba uno de estos expediente, el sistema solo indica que esta aprobado pero el papel que indica que un expediente se aprobó, se carga directo a GDE, no pasa por nuestro sistema.
+* Carpeta de obra: Es el expediente principal que se crea cuando el contribuyente asiste a Mesa de Entrada, lo revisa Obras Particulares.
+      Los datos que solicita son:
+* Nota con requerimiento de tramite e identificación Catastral
+* Croquis de la manzana (Delimitado por las calles), con ubicación de la parcela, medidas de la misma y distancia a esquinas
+* Acreditación de titularidad de Dominio*
+* Plano de obra a realizar en sistema (DWG o DXF o ZIP)
+* Plano de antecedentes (Opcional)
+* Plano de Anteproyecto
+
+
+* Certificado de zonificación que lo revisa y aprueba planificación, requiere:
+* Plano antecedente aprobado / croquis y plancheta catastral.
+* Copia de Escritura / Contrato de Locación.
+* Nota de Autorización ( del titular al gestor).
+* Copia D.N.I. del titular.
+* Memoria descriptiva de las tareas a desarrollar.
+* En algunos casos se les pide la inscripción a ARB(Opcional)
+
+* Prefactibilidad también lo revisa y aprueba Planificación y requiere:
+* Certificado de Zonificación (Otro expediente)
+* Nota de solicitud dirigida al Sr. Intendente
+* Dominio del Inmueble
+* Memoria Descriptiva
+* Plano de Anteproyecto (Formato Municipal)
+* Plano de Perquisición y/o Forestación (Memoria Descriptiva)
+* Copia de Plano Antecedente (Si lo hubiere)
+* Volumetría
+
+
+* No impacto ambiental: Medio ambiente es quien lo revisa, requiere:
+* Nota simple de solicitud de emisión de la declaración
+* DNI y constancia de cuit, boleto, escritura y/o cesión, contrato social, poder (De corresponder)
+* Plano de obra (Ya presentado para la carpeta de obra)
+* Fotos del frente del predio y obra existente, donde se vea el número de pilar y el arbolado
+* Croquis de arbolado existente en el predio y en su frente
+* Nota en caracter de DDJJ en la que el titular garantiza la correcta gestión de los residuos áridos y los residuos especiales
+
+                     
+
+

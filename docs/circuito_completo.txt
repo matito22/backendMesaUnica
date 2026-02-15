@@ -1,0 +1,45 @@
+CIRCUITO COMPLETO: GESTIÓN DE EXPEDIENTES MUNICIPALES (MESA ÚNICA)
+
+1. IDENTIDAD DIGITAL (Inicio)
+   - El Ciudadano/Profesional se registra en la plataforma "Mesa Única".
+   - Se valida su identidad (DNI/Matrícula).
+   - Obtiene acceso a su panel de control.
+
+2. EL EXPEDIENTE MADRE: "CARPETA DE OBRA"
+   - Requisito Fundamental: Antes de iniciar cualquier trámite específico (Zonificación, Ambiental, etc.), el sistema OBLIGA a iniciar una "Carpeta de Obra".
+   - Acción del Contribuyente:
+     a. Selecciona "Iniciar Carpeta de Obra".
+     b. Completa el Formulario Madre (Datos del Propietario, Ubicación, Profesionales - según PDF "Carpeta de Obra").
+     c. Sube la Documentación Obligatoria Base: Escritura/Dominio, Plano de Mensura, DNI, Libre Deuda.
+   - Estado Inicial: "PENDIENTE DE REVISIÓN (MESA DE ENTRADA)".
+
+3. FILTRO DE MESA DE ENTRADA
+   - Rol: Usuario Municipal (Mesa de Entrada).
+   - Acción: Revisa formalmente que la documentación base esté legible y completa.
+   - Resultado A (Rechazo): Se devuelve al contribuyente con observaciones (ej: "Falta firma en plano"). El estado pasa a "PENDIENTE RESUBIDA".
+   - Resultado B (Aprobación): Se valida la carpeta.
+     * IMPORTANTE: En este punto se asigna/carga manual o automáticamente el "Número GDE" (Gestión Documental Electrónica) oficial.
+   - Estado: "ABIERTO / EN CURSO".
+
+4. LOS EXPEDIENTES HIJOS (Trámites Específicos)
+   - Una vez que la Carpeta de Obra tiene un Número GDE asignado, el contribuyente puede iniciar los trámites satélites.
+   - Ejemplos: "Certificado de Zonificación", "Impacto Ambiental", "Factibilidad".
+   - Validación Cruzada: 
+     - Al iniciar una "Zonificación", el sistema pide: "¿A qué Carpeta de Obra corresponde?".
+     - El usuario ingresa el GDE de la Carpeta de Obra.
+     - El sistema vincula internamente ambos expedientes (Relación Padre-Hijo).
+   - Beneficio: El contribuyente NO vuelve a subir la Escritura ni el DNI. El revisor de Zonificación consulta esos documentos directamente de la Carpeta de Obra vinculada.
+
+5. EVALUACIÓN TÉCNICA (Sectores Específicos)
+   - Cada expediente hijo viaja a su bandeja correspondiente (Ej: El exp. de Zonificación va a la bandeja del sector "Planeamiento").
+   - El Revisor Técnico (Arquitecto/Ingeniero Municipal):
+     - Visualiza los documentos específicos del trámite hijo (Ej: Croquis, Memoria Descriptiva).
+     - Consulta los documentos base de la Carpeta de Obra Madre si es necesario.
+   - Interacción:
+     - Si hay observaciones técnicas, usa el Chat/Mensajería vinculado al expediente.
+     - El contribuyente recibe notificación, subsana y vuelve a enviar.
+
+6. RESOLUCIÓN Y CIERRE
+   - Aprobación Parcial: Cuando un sector (ej: Medio Ambiente) aprueba su expediente hijo, emite un Certificado Digital (PDF).
+   - Este certificado se adjunta automáticamente o manualmente a la Carpeta de Obra Madre.
+   - Cierre Definitivo: Cuando la Carpeta de Obra tiene todos los dictámenes necesarios (Zonificación OK + Ambiental OK + Planos OK), se emite el "Permiso de Obra" final.

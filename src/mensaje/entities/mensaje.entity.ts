@@ -1,4 +1,5 @@
-import { Expediente } from "src/expediente/entities/expediente.entity";
+import { Documento } from "../../documento/entities/documento.entity";
+import { Expediente } from "../../expediente/entities/expediente.entity";
 import { UsuarioMunicipal } from "src/usuario-municipal/entities/usuario-municipal.entity";
 import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 
@@ -24,5 +25,9 @@ export class Mensaje {
     @ManyToOne(() => UsuarioMunicipal, {nullable: true})
     @Column({name: 'id_usuario_municipal', type: 'int', nullable: true})
     idUsuarioMunicipal: number;
+
+    @ManyToOne(() => Documento, {nullable: true})
+    @Column({name: 'id_documento', type: 'int'})
+    idDocumento:Documento
 
 }

@@ -1,5 +1,6 @@
-import { SectorMunicipal } from "src/sector-municipal/entities/sector-municipal.entity";
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { RequisitoTipoExpediente } from "../../requisito-tipo-expediente/entities/requisito-tipo-expediente.entity";
+import { SectorMunicipal } from "../../sector-municipal/entities/sector-municipal.entity";
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity('tipo_documento')
 export class TipoDocumento {
@@ -10,11 +11,8 @@ export class TipoDocumento {
     @Column({name:'nombre',type:'varchar',length:100})
     nombre: string;
 
-    @Column({name:'descripcion',type:'varchar',length:255})
+    @Column({name:'descripcion',type:'text'})
     descripcion: string;
-
-    @Column({name:'es_obligatorio',type:'tinyint',width:1,default:false})
-    esObligatorio:boolean;
 
     @Column({name:'activo',type:'tinyint',width:1,default:true})
     activo:boolean;
@@ -22,5 +20,8 @@ export class TipoDocumento {
     @ManyToOne(() => SectorMunicipal)
     @JoinColumn({ name: 'id_sector_responsable'})
     idSectorResponsable: SectorMunicipal;
+
+    @OneToMany(() => RequisitoTipoExpediente, (requisito) => requisito.tipoDocumento, { eager: false })
+    requisitos: RequisitoTipoExpediente[];
 
 }

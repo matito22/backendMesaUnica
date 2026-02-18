@@ -34,7 +34,6 @@ export class TipoDocumentoService extends HandleService {
         const tipoDocumento = this.tipoDocumentoRepository.create({
           nombre: createTipoDocumentoDto.nombre,
           descripcion: createTipoDocumentoDto.descripcion,
-          esObligatorio: createTipoDocumentoDto.esObligatorio,
           activo: createTipoDocumentoDto.activo,
           idSectorResponsable: sector,
 

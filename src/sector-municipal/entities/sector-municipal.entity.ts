@@ -1,5 +1,5 @@
-import { TipoDocumento } from "src/tipo-documento/entities/tipo-documento.entity";
-import { UsuarioMunicipal } from "src/usuario-municipal/entities/usuario-municipal.entity";
+import { TipoDocumento } from "../../tipo-documento/entities/tipo-documento.entity";
+import { UsuarioMunicipal } from "../../usuario-municipal/entities/usuario-municipal.entity";
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity('sector_municipal')

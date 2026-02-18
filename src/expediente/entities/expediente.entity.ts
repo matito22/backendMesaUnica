@@ -1,6 +1,7 @@
 import { Contribuyente } from "src/contribuyente/entities/contribuyente.entity";
 import { EstadoExpediente } from "src/enum/estado-expediente";
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { TipoExpediente } from "src/tipo-expediente/entities/tipo-expediente.entity";
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 
 
 @Entity('expediente')
@@ -12,6 +13,9 @@ export class Expediente {
     @Column({name: 'numero_gde', type: 'varchar', length: 50, unique: true})
     numeroGde: string;
 
+    @Column({ name: 'datos_formulario', type: 'json', nullable: true })
+    datosFormulario: Record<string, any> | null;
+
     @Column({name: 'estado', type: 'enum', enum: EstadoExpediente, default: EstadoExpediente.EN_REVISION})
     estado: EstadoExpediente;
 
@@ -22,6 +26,14 @@ export class Expediente {
     fechaFinalizacion: Date;
 
     @ManyToOne(() => Contribuyente)
-    @Column({name: 'id_contribuyente', type: 'int'})
+    @JoinColumn({name: 'id_contribuyente'})
     idContribuyente: number;
+
+    @ManyToOne(() => TipoExpediente)
+    @JoinColumn({name: 'id_tipo_expediente'})
+    idTipoExpediente: number;
+
+    @ManyToOne(() => Expediente)
+    @JoinColumn({name: 'id_expediente_padre'})
+    idExpedientePadre: number;
 }

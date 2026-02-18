@@ -21,7 +21,7 @@ export class DocumentoService extends HandleService {
     const documento = this.documentoRepository.create({
       idExpediente: createDocumentoDto.idExpediente,
       idTipoDocumento: createDocumentoDto.idTipoDocumento,
-      nombreArchivoOriginal: createDocumentoDto.nombreArchivoOriginal,
+      nombreArchivo: createDocumentoDto.nombreArchivo,
       rutaAlmacenamiento: createDocumentoDto.rutaAlmacenamiento,
       tipoMime: createDocumentoDto.tipoMime,
       pesoKb: createDocumentoDto.pesoKb,

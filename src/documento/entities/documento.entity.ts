@@ -10,8 +10,8 @@ export class Documento {
     @PrimaryGeneratedColumn({name: 'id_documento', type: 'int'})
     idDocumento: number;
 
-    @Column({name: 'nombre_archivo_original', type: 'varchar', length: 255, nullable: true})
-    nombreArchivoOriginal: string;
+    @Column({name: 'nombre_archivo', type: 'varchar', length: 255, nullable: true})
+    nombreArchivo: string;
 
     @Column({name: 'ruta_almacenamiento', type: 'varchar', length: 500, nullable: true})
     rutaAlmacenamiento: string;

@@ -29,7 +29,7 @@ export class CreateDocumentoDto {
   @IsString()
   @MaxLength(255)
   @IsOptional()
-  nombreArchivoOriginal?: string;
+  nombreArchivo?: string;
 
   @ApiPropertyOptional({
     description: 'Ruta de almacenamiento (path físico o URL S3)',

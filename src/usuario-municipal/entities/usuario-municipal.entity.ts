@@ -30,7 +30,7 @@ export class UsuarioMunicipal {
     idSector: SectorMunicipal;
 
 
-    @Column({ type: 'varchar', length: 500, nullable: true })
+    @Column({ name:"current_hashed_refresh_token",type: 'varchar', length: 500, nullable: true })
     currentHashedRefreshToken: string | null;
 
 }

@@ -5,12 +5,12 @@ import { SectorMunicipal } from "src/sector-municipal/entities/sector-municipal.
 
 export class CreateUsuarioMunicipalDto {
 
-    @ApiProperty({ example: 'mtosi' })
+    @ApiProperty({ example: 'admin_test' })
      @IsString()
     @IsNotEmpty()
     nombre: string;
 
-    @ApiProperty({ example: '123456789'})
+    @ApiProperty({ example: 'password'})
     @IsString()
     @IsNotEmpty()
     @MinLength(6)
@@ -26,7 +26,7 @@ export class CreateUsuarioMunicipalDto {
     @IsBoolean()
     activo: boolean;
 
-    @ApiProperty({ example: RolUser.mesa_entrada })
+    @ApiProperty({ example: RolUser.MESA_ENTRADA })
     @IsEnum(RolUser)
     rol: RolUser;
 

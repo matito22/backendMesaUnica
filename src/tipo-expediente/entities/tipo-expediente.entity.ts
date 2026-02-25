@@ -9,10 +9,6 @@ export class TipoExpediente {
   @PrimaryGeneratedColumn({ name: 'id_tipo_expediente' })
   idTipoExpediente: number;
 
-  // FK al sector que es responsable de revisar este tipo de trámite
-  @Column({ name: 'id_sector_responsable' })
-  idSectorResponsable: number;
-
   @ManyToOne(() => SectorMunicipal, { eager: false })
   @JoinColumn({ name: 'id_sector_responsable' })
   sectorResponsable: SectorMunicipal;
@@ -34,6 +30,6 @@ export class TipoExpediente {
   @OneToMany(() => RequisitoTipoExpediente,(requisito) => requisito.tipoExpediente)
   requisitos: RequisitoTipoExpediente[];
 
-  @OneToMany(() => Expediente, (expediente) => expediente.idTipoExpediente)
+  @OneToMany(() => Expediente, (expediente) => expediente.tipoExpediente)
   expedientes: Expediente[];
 }

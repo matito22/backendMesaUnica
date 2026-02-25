@@ -32,42 +32,28 @@ export class DocumentoService extends HandleService {
     return this.documentoRepository.save(documento);
   }
 
-  findAll(): Promise<Documento[]> {
-    const documentos = this.documentoRepository.find({
-      relations: ['idExpediente', 'idTipoDocumento', 'idUsuarioRevisor'],
-      order: { fechaUltimaCarga: 'DESC' }
+async findAll(): Promise<Documento[]> {
+    return this.documentoRepository.find({
+        relations: ['expediente', 'tipoDocumento', 'usuarioRevisor'],
+        order: { fechaUltimaCarga: 'DESC' }
     });
-    return this.handleException(
-      documentos,
-      NotFoundException,
-      'No se encontraron documentos'
-    );
-  }
+    // No hay nada que verificar: [] es una respuesta válida
+}
 
-  async findOne(idDocumento: number): Promise<Documento> {
-    const documento = await this.documentoRepository.findOne({
-      where: { idDocumento },
-      relations: ['idExpediente', 'idTipoDocumento', 'idUsuarioRevisor']
-    });
-    return this.handleException(
-      documento,
-      NotFoundException,
-      `Documento con ID ${idDocumento} no encontrado`
-    );
-  }
 
-  async findByExpediente(idExpediente: number): Promise<Documento[]> {
+
+async findByExpediente(idExpediente: number): Promise<Documento[]> {
     const documentos = await this.documentoRepository.find({
-      where: { idExpediente },
-      relations: ['idTipoDocumento', 'idUsuarioRevisor'],
-      order: { fechaUltimaCarga: 'DESC' }
+        where: { idExpediente },
+        relations: ['tipoDocumento', 'usuarioRevisor'],
     });
-    return this.handleException(
-      documentos,
-      NotFoundException,
-      `No se encontraron documentos para el expediente ${idExpediente}`
-    );
-  }
+    // Solo si tiene sentido de negocio lanzar error cuando no hay docs:
+    if (documentos.length === 0) {
+        throw new NotFoundException(`No hay documentos para el expediente ${idExpediente}`);
+    }
+    return documentos;
+}
+
 
   async findByEstado(estado: EstadoDocumento): Promise<Documento[]> {
     const documentos = await this.documentoRepository.find({

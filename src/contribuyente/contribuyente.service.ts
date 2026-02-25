@@ -6,6 +6,7 @@ import { Contribuyente } from './entities/contribuyente.entity';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Injectable, NotFoundException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class ContribuyenteService  extends HandleService {
@@ -48,6 +49,10 @@ async findByDni(dni: string): Promise<Contribuyente | null> {
   // NO uses handleException aquí, solo retorna null si no existe
   return this.contribuyenteRepository.findOneBy({ dni });
 }
+
+async findByEmailOptional(email: string): Promise<Contribuyente | null> {
+  return this.contribuyenteRepository.findOneBy({ email });
+}
   
 
   async update(idContribuyente: number, updateContribuyenteDto: UpdateContribuyenteDto): Promise<Contribuyente> {
@@ -70,4 +75,31 @@ async findByDni(dni: string): Promise<Contribuyente | null> {
        );
        return this.contribuyenteRepository.remove(existingContribuyente);
      }
+
+
+async activateContribuyente(contribuyente: Contribuyente, hashedPassword: string): Promise<void> {
+  contribuyente.activo = true;
+  contribuyente.password = hashedPassword;    // ✅ Reemplaza la temporal
+  contribuyente.activationToken = null;       // ✅ Invalida el token para que no se reutilice
+  await this.save(contribuyente);
+}
+async finOneInactiveByIdAndActivationToken(id: number, code:string): Promise<Contribuyente | null> {
+  return this.contribuyenteRepository.findOneBy({ idContribuyente: id, activationToken:code, activo: false });
+}
+
+async setCurrentRefreshToken(idContribuyente: number, token: string) {
+  const hashedToken = await bcrypt.hash(token, 10); 
+  await this.contribuyenteRepository.update(idContribuyente, { currentHashedRefreshToken: hashedToken });
+}
+
+async removeRefreshToken(idContribuyente: number): Promise<void> {
+  if (!idContribuyente) {
+    throw new Error('Contribuyente ID is required to remove refresh token');
+  }
+
+  await this.contribuyenteRepository.update(
+    { idContribuyente },
+    { currentHashedRefreshToken: null }
+  );
+}
 }

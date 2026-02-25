@@ -3,37 +3,42 @@ import { EstadoExpediente } from "src/enum/estado-expediente";
 import { TipoExpediente } from "src/tipo-expediente/entities/tipo-expediente.entity";
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 
-
 @Entity('expediente')
 export class Expediente {
 
-    @PrimaryGeneratedColumn({name: 'id_expediente', type: 'int'})
+    @PrimaryGeneratedColumn({ name: 'id_expediente', type: 'int' })
     idExpediente: number;
 
-    @Column({name: 'numero_gde', type: 'varchar', length: 50, unique: true})
+    @Column({ name: 'numero_gde', type: 'varchar', length: 50, unique: true })
     numeroGde: string;
 
     @Column({ name: 'datos_formulario', type: 'json', nullable: true })
     datosFormulario: Record<string, any> | null;
 
-    @Column({name: 'estado', type: 'enum', enum: EstadoExpediente, default: EstadoExpediente.EN_REVISION})
+    
+    @Column({ name: 'estado', type: 'enum', enum: EstadoExpediente, default: EstadoExpediente.INICIADO })
     estado: EstadoExpediente;
 
-    @Column({name: 'fecha_creacion', type: 'datetime', default: () => 'CURRENT_TIMESTAMP'})
+    @Column({ name: 'fecha_creacion', type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
     fechaCreacion: Date;
 
-    @Column({name: 'fecha_finalizacion', type: 'datetime', nullable: true})
-    fechaFinalizacion: Date;
+    @Column({ name: 'fecha_finalizacion', type: 'datetime', nullable: true })
+    fechaFinalizacion: Date | null;
 
-    @ManyToOne(() => Contribuyente)
-    @JoinColumn({name: 'id_contribuyente'})
-    idContribuyente: number;
 
-    @ManyToOne(() => TipoExpediente)
-    @JoinColumn({name: 'id_tipo_expediente'})
-    idTipoExpediente: number;
 
-    @ManyToOne(() => Expediente)
-    @JoinColumn({name: 'id_expediente_padre'})
-    idExpedientePadre: number;
+    @ManyToOne(() => Contribuyente, { nullable: false })
+    @JoinColumn({ name: 'id_contribuyente' })
+    contribuyente: Contribuyente;
+
+
+    @ManyToOne(() => TipoExpediente, { nullable: false })
+    @JoinColumn({ name: 'id_tipo_expediente' })
+    tipoExpediente: TipoExpediente;
+
+ 
+
+    @ManyToOne(() => Expediente, { nullable: true })
+    @JoinColumn({ name: 'id_expediente_padre' })
+    expedientePadre: Expediente | null;
 }

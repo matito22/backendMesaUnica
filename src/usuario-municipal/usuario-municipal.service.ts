@@ -85,9 +85,14 @@ async findByNameOptional(nombre: string): Promise<UsuarioMunicipal | null> {
   //Guardamos null en la columna currentHashedRefreshToken
   //Usamos esta funcion en authservice para eliminar el refresh token de la base de datos
 async removeRefreshToken(idUsuario: number): Promise<void> {
-  await this.userRepository.update(idUsuario, {
-    currentHashedRefreshToken: null,
-  });
+  if (!idUsuario) {
+    throw new Error('User ID is required to remove refresh token');
+  }
+
+  await this.userRepository.update(
+    { idUsuario },
+    { currentHashedRefreshToken: null }
+  );
 }
 
 

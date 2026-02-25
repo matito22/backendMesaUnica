@@ -1,7 +1,7 @@
 import { Documento } from "../../documento/entities/documento.entity";
 import { Expediente } from "../../expediente/entities/expediente.entity";
 import { UsuarioMunicipal } from "src/usuario-municipal/entities/usuario-municipal.entity";
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity('mensaje')
 export class Mensaje {
@@ -19,15 +19,15 @@ export class Mensaje {
     leido: boolean;
 
     @ManyToOne(() => Expediente)
-    @Column({name: 'id_expediente', type: 'int'})
+    @JoinColumn({ name: 'id_expediente' })
     idExpediente: number;
 
     @ManyToOne(() => UsuarioMunicipal, {nullable: true})
-    @Column({name: 'id_usuario_municipal', type: 'int', nullable: true})
+    @JoinColumn({ name: 'id_usuario_municipal' })
     idUsuarioMunicipal: number;
 
     @ManyToOne(() => Documento, {nullable: true})
-    @Column({name: 'id_documento', type: 'int'})
+    @JoinColumn({ name: 'id_documento' })
     idDocumento:Documento
 
 }

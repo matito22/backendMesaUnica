@@ -5,7 +5,7 @@ import { EstadoExpediente } from 'src/enum/estado-expediente';
 
 export class CreateExpedienteDto {
 
-    @ApiProperty({description: 'ID del contribuyente',example: 1})
+    @ApiProperty({description: 'ID del contribuyente',example: 3})
     @IsInt()
     @IsNotEmpty()
     idContribuyente: number;
@@ -20,5 +20,19 @@ export class CreateExpedienteDto {
     @IsEnum(EstadoExpediente)
     @IsOptional()
     estado?: EstadoExpediente;
+
+    @ApiPropertyOptional({description: 'ID del tipo de expediente',example: 1})
+    @IsInt()
+    @IsOptional()
+    idTipoExpediente?: number;
+
+    @ApiPropertyOptional({description: 'ID del expediente padre',example: 3})
+    @IsInt()
+    @IsOptional()
+    idExpedientePadre?: number;
+
+    @ApiPropertyOptional({description: 'Datos del formulario del trámite',example: {campo1: 'valor1', campo2: 'valor2'}})
+    @IsOptional()    
+    datosFormulario?: Record<string, any>;
 
 }

@@ -21,7 +21,6 @@ export class HttpExceptionFilter implements ExceptionFilter {
         timestamp: new Date().toISOString(),//Incluimos una marca de tiempo.
         path: request.url,//Incluimos la URL de la solicitud que causó la excepción.
         message: exception.message || null,//Incluimos el mensaje de la excepción.
-        headers: request.headers,//Incluimos los encabezados de la solicitud.
         method: request.method,//Incluimos el método HTTP de la solicitud.
       });
   }

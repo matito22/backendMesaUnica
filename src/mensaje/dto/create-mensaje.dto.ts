@@ -3,12 +3,12 @@ import { IsBoolean, IsInt, IsNotEmpty, IsOptional, IsString } from 'class-valida
 
 export class CreateMensajeDto {
 
-    @ApiProperty({description: 'ID del expediente',example: 1})
+    @ApiProperty({description: 'ID del expediente',example: 12})
     @IsInt()
     @IsNotEmpty()
     idExpediente: number;
 
-    @ApiPropertyOptional({description: 'ID del usuario municipal (NULL si el mensaje es del contribuyente)',example: 3})
+    @ApiPropertyOptional({description: 'ID del usuario municipal (NULL si el mensaje es del contribuyente)',example: 2})
     @IsInt()
     @IsOptional()
     idUsuarioMunicipal?: number;

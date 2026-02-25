@@ -18,32 +18,27 @@ export class HistorialDocumentoService extends HandleService {
 
   async create(createHistorialDocumentoDto: CreateHistorialDocumentoDto): Promise<HistorialDocumento> {
     const historial = this.historialDocumentoRepository.create({
-      idDocumento: createHistorialDocumentoDto.idDocumento,
+      idDocumento:    createHistorialDocumentoDto.idDocumento,
       idUsuarioActor: createHistorialDocumentoDto.idUsuarioActor,
       estadoAnterior: createHistorialDocumentoDto.estadoAnterior,
-      estadoNuevo: createHistorialDocumentoDto.estadoNuevo,
-      observacion: createHistorialDocumentoDto.observacion,
+      estadoNuevo:    createHistorialDocumentoDto.estadoNuevo,
+      observacion:    createHistorialDocumentoDto.observacion,
     });
-
     return this.historialDocumentoRepository.save(historial);
   }
 
   findAll(): Promise<HistorialDocumento[]> {
-    const historiales = this.historialDocumentoRepository.find({
-      relations: ['idDocumento', 'idUsuarioActor'],
+    // ✅ Nombres de relación corregidos: 'documento' y 'usuarioActor'
+    return this.historialDocumentoRepository.find({
+      relations: ['documento', 'usuarioActor'],
       order: { fechaCambio: 'DESC' }
     });
-    return this.handleException(
-      historiales,
-      NotFoundException,
-      'No se encontraron registros de historial'
-    );
   }
 
   async findOne(idHistorial: number): Promise<HistorialDocumento> {
     const historial = await this.historialDocumentoRepository.findOne({
       where: { idHistorial },
-      relations: ['idDocumento', 'idUsuarioActor']
+      relations: ['documento', 'usuarioActor'],
     });
     return this.handleException(
       historial,
@@ -53,43 +48,32 @@ export class HistorialDocumentoService extends HandleService {
   }
 
   async findByDocumento(idDocumento: number): Promise<HistorialDocumento[]> {
-    const historiales = await this.historialDocumentoRepository.find({
+    // ✅ where por la columna FK (idDocumento), no por la relación
+    return this.historialDocumentoRepository.find({
       where: { idDocumento },
-      relations: ['idUsuarioActor'],
+      relations: ['usuarioActor'],
       order: { fechaCambio: 'DESC' }
     });
-    return this.handleException(
-      historiales,
-      NotFoundException,
-      `No se encontró historial para el documento ${idDocumento}`
-    );
   }
 
   async findByUsuario(idUsuarioActor: number): Promise<HistorialDocumento[]> {
-    const historiales = await this.historialDocumentoRepository.find({
+    return this.historialDocumentoRepository.find({
       where: { idUsuarioActor },
-      relations: ['idDocumento'],
+      relations: ['documento'],
       order: { fechaCambio: 'DESC' }
     });
-    return this.handleException(
-      historiales,
-      NotFoundException,
-      `No se encontró historial para el usuario ${idUsuarioActor}`
-    );
   }
 
-
   async update(id: number, updateHistorialDocumentoDto: UpdateHistorialDocumentoDto): Promise<HistorialDocumento> {
-  let existingHistorial = await this.historialDocumentoRepository.findOneBy({ idHistorial: id });
-  existingHistorial = this.handleException(
-    existingHistorial,
-    NotFoundException,
-    `Historial con ID ${id} no encontrado`
-  );
-  
-  Object.assign(existingHistorial, updateHistorialDocumentoDto);
-  return this.historialDocumentoRepository.save(existingHistorial);
-}
+    let existingHistorial = await this.historialDocumentoRepository.findOneBy({ idHistorial: id });
+    existingHistorial = this.handleException(
+      existingHistorial,
+      NotFoundException,
+      `Historial con ID ${id} no encontrado`
+    );
+    Object.assign(existingHistorial, updateHistorialDocumentoDto);
+    return this.historialDocumentoRepository.save(existingHistorial);
+  }
 
   async remove(id: number) {
     let existingHistorial = await this.historialDocumentoRepository.findOneBy({ idHistorial: id });

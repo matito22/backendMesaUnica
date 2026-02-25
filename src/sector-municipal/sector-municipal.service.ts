@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateSectorMunicipalDto } from './dto/create-sector-municipal.dto';
 import { UpdateSectorMunicipalDto } from './dto/update-sector-municipal.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -19,23 +19,22 @@ export class SectorMunicipalService  extends HandleService {
 
 
 
-  async create(createSectorMunicipalDto: CreateSectorMunicipalDto): Promise<SectorMunicipal> {
 
-    const existingSectorMunicipal = await this.sectorMunicipalRepository.findOneBy({ nombre: createSectorMunicipalDto.nombre });
     
-     if(existingSectorMunicipal){
-      this.handleException(existingSectorMunicipal,NotFoundException,`Ya existe un sector con nombre ${createSectorMunicipalDto.nombre}`);
+    
+// ✅ CORRECTO — usar ConflictException y handleDuplicate, o simplemente throw directo
+async create(createSectorMunicipalDto: CreateSectorMunicipalDto): Promise<SectorMunicipal> {
+    const existente = await this.sectorMunicipalRepository.findOneBy({ 
+        nombre: createSectorMunicipalDto.nombre 
+    });
+    
+    if (existente) {
+        throw new ConflictException(`Ya existe un sector con nombre "${createSectorMunicipalDto.nombre}"`);
     }
     
-    
-    const sectorMunicipal = this.sectorMunicipalRepository.create({
-      nombre: createSectorMunicipalDto.nombre,
-      activo: createSectorMunicipalDto.activo,
-    });
-
-    return this.sectorMunicipalRepository.save(sectorMunicipal);
-  }
-    
+    const sector = this.sectorMunicipalRepository.create(createSectorMunicipalDto);
+    return this.sectorMunicipalRepository.save(sector);
+}
       
 
   findAll(): Promise<SectorMunicipal[]> {

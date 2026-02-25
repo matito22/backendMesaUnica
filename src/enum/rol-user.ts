@@ -1,5 +1,5 @@
 export enum RolUser {
-    admin = 'admin',
-    mesa_entrada = 'mesa_entrada',
-    revisor = 'revisor',
+    ADMIN = 'ADMIN',
+    MESA_ENTRADA = 'MESA_ENTRADA',
+    REVISOR = 'REVISOR'
 }

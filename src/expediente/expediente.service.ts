@@ -5,55 +5,81 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Expediente } from './entities/expediente.entity';
 import { HandleService } from '../utils/handle.service';
+import { EstadoExpediente } from 'src/enum/estado-expediente';
+import { TipoExpediente } from 'src/tipo-expediente/entities/tipo-expediente.entity';
+import { Contribuyente } from 'src/contribuyente/entities/contribuyente.entity';
 
 @Injectable()
 export class ExpedienteService extends HandleService {
 
   constructor(
     @InjectRepository(Expediente)
-    private readonly expedienteRepository: Repository<Expediente>
+    private readonly expedienteRepository: Repository<Expediente>,
+
+    @InjectRepository(TipoExpediente)
+    private readonly tipoExpedienteRepository: Repository<TipoExpediente>,
+
+    @InjectRepository(Contribuyente)
+    private readonly contribuyenteRepository: Repository<Contribuyente>
   ) {
     super();
   }
 
-  async create(createExpedienteDto: CreateExpedienteDto): Promise<Expediente> {
-    
-    const existingExpediente = await this.expedienteRepository.findOneBy({ 
-      numeroGde: createExpedienteDto.numeroGde 
-    });
-    
-    if (existingExpediente) {
-      this.handleException(
-        existingExpediente, 
-        ConflictException, 
-        `Ya existe un expediente con número GDE ${createExpedienteDto.numeroGde}`
-      );
-    }
-    
-    const expediente = this.expedienteRepository.create({
-      idContribuyente: createExpedienteDto.idContribuyente,
-      numeroGde: createExpedienteDto.numeroGde,
-      estado: createExpedienteDto.estado,
-    });
+ async create(dto: CreateExpedienteDto): Promise<Expediente> {
 
-    return this.expedienteRepository.save(expediente);
+  const existing = await this.expedienteRepository.findOneBy({
+    numeroGde: dto.numeroGde
+  });
+
+  if (existing) {
+    throw new ConflictException(
+      `Ya existe un expediente con número GDE ${dto.numeroGde}`
+    );
   }
 
+  // 1️⃣ Validar contribuyente
+  const contribuyente = await this.contribuyenteRepository.findOne({
+    where: { idContribuyente: dto.idContribuyente }
+  });
+
+  if (!contribuyente) {
+    throw new NotFoundException('El contribuyente no existe');
+  }
+
+  // 2️⃣ Validar tipo expediente
+  const tipoExpediente = await this.tipoExpedienteRepository.findOne({
+    where: { idTipoExpediente: dto.idTipoExpediente }
+  });
+
+  if (!tipoExpediente) {
+    throw new NotFoundException('El tipo de expediente no existe');
+  }
+
+  // 3️⃣ Crear entidad correctamente
+  const expediente = this.expedienteRepository.create({
+    numeroGde: dto.numeroGde,
+    datosFormulario: dto.datosFormulario ?? null,
+    estado: dto.estado ?? EstadoExpediente.INICIADO,
+    contribuyente: contribuyente,
+    tipoExpediente: tipoExpediente,
+  });
+
+  return this.expedienteRepository.save(expediente);
+}
+
+
   findAll(): Promise<Expediente[]> {
-    const expedientes = this.expedienteRepository.find({
-      relations: ['idContribuyente']
+    // FIX: la relación se llama 'contribuyente', no 'idContribuyente' (corregido en la entidad)
+    return this.expedienteRepository.find({
+      relations: ['contribuyente', 'tipoExpediente'],
+      order: { fechaCreacion: 'DESC' }
     });
-    return this.handleException(
-      expedientes,
-      NotFoundException,
-      'No se encontraron expedientes'
-    );
   }
 
   async findOne(idExpediente: number): Promise<Expediente> {
     const expediente = await this.expedienteRepository.findOne({
       where: { idExpediente },
-      relations: ['idContribuyente']
+      relations: ['contribuyente', 'tipoExpediente', 'expedientePadre'], // FIX: nombres correctos
     });
     return this.handleException(
       expediente,
@@ -65,7 +91,7 @@ export class ExpedienteService extends HandleService {
   async findByNumeroGde(numeroGde: string): Promise<Expediente> {
     const expediente = await this.expedienteRepository.findOne({
       where: { numeroGde },
-      relations: ['idContribuyente']
+      relations: ['contribuyente', 'tipoExpediente'],
     });
     return this.handleException(
       expediente,
@@ -74,17 +100,32 @@ export class ExpedienteService extends HandleService {
     );
   }
 
-  async findByContribuyente(idContribuyente: number): Promise<Expediente[]> {
-    const expedientes = await this.expedienteRepository.find({
-      where: { idContribuyente },
-      relations: ['idContribuyente']
-    });
-    return this.handleException(
-      expedientes,
-      NotFoundException,
-      `No se encontraron expedientes para el contribuyente ${idContribuyente}`
-    );
-  }
+async findByContribuyente(idContribuyente: number): Promise<Expediente[]> {
+  return this.expedienteRepository.find({
+    where: {
+      contribuyente: {
+        idContribuyente: idContribuyente,
+      },
+    },
+    relations: ['tipoExpediente'],
+    order: { fechaCreacion: 'DESC' },
+  });
+}
+
+
+  // Devuelve todos los sub-expedientes vinculados a un expediente padre
+    async findHijos(idExpedientePadre: number): Promise<Expediente[]> {
+      return this.expedienteRepository.find({
+        where: {
+          expedientePadre: {
+            idExpediente: idExpedientePadre,
+          },
+        },
+        relations: ['tipoExpediente'],
+        order: { fechaCreacion: 'DESC' },
+      });
+    }
+
 
   async update(id: number, updateExpedienteDto: UpdateExpedienteDto): Promise<Expediente> {
     let existingExpediente = await this.expedienteRepository.findOneBy({ idExpediente: id });
@@ -94,15 +135,12 @@ export class ExpedienteService extends HandleService {
       `Expediente con ID ${id} no encontrado`
     );
 
-    // Si se está actualizando el número GDE, verificar que no exista
     if (updateExpedienteDto.numeroGde && updateExpedienteDto.numeroGde !== existingExpediente.numeroGde) {
-      const duplicateGde = await this.expedienteRepository.findOneBy({ 
-        numeroGde: updateExpedienteDto.numeroGde 
+      const duplicateGde = await this.expedienteRepository.findOneBy({
+        numeroGde: updateExpedienteDto.numeroGde
       });
       if (duplicateGde) {
-        this.handleException(
-          duplicateGde,
-          ConflictException,
+        throw new ConflictException(
           `Ya existe un expediente con número GDE ${updateExpedienteDto.numeroGde}`
         );
       }

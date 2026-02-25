@@ -1,3 +1,4 @@
+import { Exclude } from "class-transformer";
 import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity('contribuyente')
@@ -19,6 +20,9 @@ export class Contribuyente {
     @Column({name:'email',type:'varchar',length:150})
     email: string;
 
+    // @Exclude() hace que class-transformer no incluya este campo en la respuesta JSON
+    // Para que funcione, el main.ts necesita: app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)))
+    @Exclude()
     @Column({name:'password',type:'varchar',length:255})
     password: string;
 
@@ -28,6 +32,10 @@ export class Contribuyente {
     @Column({name:'fecha_registro',type:'datetime',default:'CURRENT_TIMESTAMP'})
     fechaRegistro: Date;
 
-    //FALTA RELAICON ONE TO MANY CON TIPO DE EXPEDIENTE
+    @Column({ name: 'activation_token', type: 'varchar', length: 255, nullable: true })
+    activationToken: string | null;
+
+    @Column({ name:"current_hashed_refresh_token",type: 'varchar', length: 500, nullable: true })
+    currentHashedRefreshToken: string | null;
 
 }

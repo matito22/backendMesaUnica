@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe } from '@nestjs/common';
 import { MensajeService } from './mensaje.service';
 import { CreateMensajeDto } from './dto/create-mensaje.dto';
 import { UpdateMensajeDto } from './dto/update-mensaje.dto';
@@ -18,17 +18,17 @@ export class MensajeController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id', ParseIntPipe) id: number) {
     return this.mensajeService.findOne(+id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateMensajeDto: UpdateMensajeDto) {
+  update(@Param('id', ParseIntPipe) id: number, @Body() updateMensajeDto: UpdateMensajeDto) {
     return this.mensajeService.update(+id, updateMensajeDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
+  remove(@Param('id', ParseIntPipe) id: number) {
     return this.mensajeService.remove(+id);
   }
 }

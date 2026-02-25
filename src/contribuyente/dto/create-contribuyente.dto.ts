@@ -25,15 +25,7 @@ export class CreateContribuyenteDto {
     @IsNotEmpty()
     email: string;
 
-    @ApiProperty({ example: '123456789'})
-    @IsString()
-    @IsNotEmpty()
-    password: string;
 
-
-    @ApiProperty({ example: true })
-    @IsBoolean()
-    activo: boolean;
     
 
 }   

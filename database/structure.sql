@@ -40,6 +40,8 @@ CREATE TABLE `contribuyente` (
   `password` varchar(255) NOT NULL,
   `activo` tinyint(1) DEFAULT 1,
   `fecha_registro` datetime DEFAULT CURRENT_TIMESTAMP,
+  `activation_token` varchar(255) DEFAULT NULL UNIQUE,//Token de activación
+  `current_hashed_refresh_token` varchar(500) DEFAULT NULL,
   PRIMARY KEY (`id_contribuyente`),
   UNIQUE KEY `uk_contribuyente_dni` (`dni`),
   UNIQUE KEY `uk_contribuyente_email` (`email`)

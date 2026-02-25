@@ -18,6 +18,7 @@ import { ExpedienteModule } from './expediente/expediente.module';
 import { MensajeModule } from './mensaje/mensaje.module';
 import { TipoExpedienteModule } from './tipo-expediente/tipo-expediente.module';
 import { RequisitoTipoExpedienteModule } from './requisito-tipo-expediente/requisito-tipo-expediente.module';
+import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
@@ -36,7 +37,7 @@ import { RequisitoTipoExpedienteModule } from './requisito-tipo-expediente/requi
     ,DocumentoModule
     ,ContribuyenteModule
     ,ExpedienteModule
-    ,MensajeModule, TipoExpedienteModule, RequisitoTipoExpedienteModule
+    ,MensajeModule, TipoExpedienteModule, RequisitoTipoExpedienteModule, MailModule,
   ],
   controllers: [AppController],
   providers: [AppService,AppConfigService,

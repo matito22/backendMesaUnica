@@ -29,6 +29,7 @@ export class AuthController {
   
   
 @UseGuards(JwtAuthGuard,RolesGuard)
+//@Public()//PARA CREAR EL PRIMERO USUARIO, SI NO PONEMOS PUBLIC, NO PODEMOS CREAR EL PRIMER USUARIO PORQUE NO TENEMOS TOKEN
 @Roles(RolUser.ADMIN)
 @Post('registrar/municipal')
 create(@Body() createUserDto: CreateUsuarioMunicipalDto) {

@@ -102,4 +102,22 @@ async removeRefreshToken(idContribuyente: number): Promise<void> {
     { currentHashedRefreshToken: null }
   );
 }
+
+
+ async buscarContribuyentes(search?: string): Promise<Contribuyente[]> {
+    const query = this.contribuyenteRepository.createQueryBuilder('c');
+
+    if (search?.trim()) {
+      const words = search.trim().split(/\s+/);
+      query.where(
+        words
+          .map((_, i) => `(LOWER(c.nombre) LIKE :word${i} OR c.dni LIKE :word${i})`)
+          .join(' OR '),
+        Object.fromEntries(words.map((word, i) => [`word${i}`, `%${word.toLowerCase()}%`]))
+      );
+    }
+
+    return query.limit(20).getMany();
+  }
+
 }

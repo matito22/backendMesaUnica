@@ -5,6 +5,8 @@ import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handleba
 import { join } from 'path';
 import { MailService } from './mail.service';
 import { MailController } from './mail.controller';
+import { ContribuyenteModule } from '../contribuyente/contribuyente.module';
+
 @Module({
     imports: [
         MailerModule.forRootAsync({
@@ -12,8 +14,8 @@ import { MailController } from './mail.controller';
             useFactory: async (configService: ConfigService) => ({
                 transport: {
                     host: configService.get('MAIL_HOST'),
-                    port: 587,
-                    secure:false,
+                    port: 465,
+                    secure:true,
                     auth: {
                         user: configService.get('MAIL_USER'),
                         pass: configService.get('MAIL_PASS'),
@@ -32,7 +34,7 @@ import { MailController } from './mail.controller';
             }),
             inject: [ConfigService],
         }),
-            
+        ContribuyenteModule,
     ],
   providers: [MailService],
   exports: [MailService],

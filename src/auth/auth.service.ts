@@ -229,7 +229,8 @@ async createContribuyente(createContribuyenteDto: CreateContribuyenteDto): Promi
 
     await this.contribuyenteService.save(newContribuyente);
 
-    await this.mailService.sendMail(
+    try{
+       await this.mailService.sendMail(
       createContribuyenteDto.email,
       'Bienvenido al Sistema Municipal',
       './mailContribuyente',
@@ -239,6 +240,11 @@ async createContribuyente(createContribuyenteDto: CreateContribuyenteDto): Promi
       }
     );
 
+    }catch(error){
+      console.error('Error al enviar el correo de bienvenida:', error);
+    }
+
+  
     return newContribuyente;
 
 }

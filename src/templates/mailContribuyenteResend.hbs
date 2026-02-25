@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Reenvío de correo - Sistema Municipal</title>
+  <style>
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background-color: #f4f6f8;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 40px auto;
+      background-color: #ffffff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .header {
+      background-color: #0d6efd;
+      color: #ffffff;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .content {
+      padding: 30px;
+      color: #333333;
+      line-height: 1.6;
+    }
+
+    .content h2 {
+      margin-top: 0;
+    }
+
+    .footer {
+      background-color: #f0f0f0;
+      padding: 15px;
+      text-align: center;
+      font-size: 12px;
+      color: #777777;
+    }
+
+    .highlight {
+      font-weight: bold;
+    }
+
+    .info-box {
+      background-color: #e7f3ff;
+      border-left: 4px solid #0d6efd;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <h1>Hola {{nombre}}</h1>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+      <h2>Reenvío de correo de bienvenida</h2>
+
+      <p>
+        Le reenviamos el correo de bienvenida al
+        <span class="highlight">Sistema de Gestión Municipal</span>.
+      </p>
+
+      <div class="info-box">
+        <p>
+          Si el correo anterior no llegó a su bandeja de entrada, le pedimos que:
+        </p>
+        <ul>
+          <li>Revise su carpeta de spam o correo no deseado</li>
+          <li>Agregue nuestro correo a sus contactos confiables</li>
+          <li>Contacte con la mesa de entrada si continúa teniendo problemas</li>
+        </ul>
+      </div>
+
+      <p>
+        Durante los próximos pasos, es necesario que
+        <span class="highlight">active su cuenta y establezca una contraseña personal</span>.
+      </p>
+
+      <p>
+        Si usted no solicitó este registro, puede ignorar este correo.
+      </p>
+
+      <p>
+        Saludos cordiales,<br />
+        <strong>Municipalidad de Esteban Echeverria</strong>
+      </p>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <p>
+        Este es un correo automático, por favor no responda este mensaje.
+      </p>
+    </div>
+  </div>
+</body>
+</html>

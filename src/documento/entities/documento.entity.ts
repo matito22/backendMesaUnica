@@ -34,22 +34,15 @@ export class Documento {
     @Column({ name: 'observacion_actual', type: 'text', nullable: true })
     observacionActual: string;
 
-    @Column({ name: 'id_expediente' })
-    idExpediente: number;
 
     @ManyToOne(() => Expediente)
     @JoinColumn({ name: 'id_expediente' })
     expediente: Expediente;
 
-    @Column({ name: 'id_tipo_documento' })
-    idTipoDocumento: number;
-
     @ManyToOne(() => TipoDocumento)
     @JoinColumn({ name: 'id_tipo_documento' })
     tipoDocumento: TipoDocumento;
 
-    @Column({ name: 'id_usuario_revisor', type: 'int', nullable: true })
-    idUsuarioRevisor: number | null;
 
     @ManyToOne(() => UsuarioMunicipal, { nullable: true })
     @JoinColumn({ name: 'id_usuario_revisor' })

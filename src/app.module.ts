@@ -19,6 +19,8 @@ import { MensajeModule } from './mensaje/mensaje.module';
 import { TipoExpedienteModule } from './tipo-expediente/tipo-expediente.module';
 import { RequisitoTipoExpedienteModule } from './requisito-tipo-expediente/requisito-tipo-expediente.module';
 import { MailModule } from './mail/mail.module';
+import { join } from 'path';
+
 
 @Module({
   imports: [

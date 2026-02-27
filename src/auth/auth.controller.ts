@@ -187,9 +187,8 @@ async activateContribuyente(@Body() activateContributenteDto: ActivateContribuye
   
 }
 
-//LE PONEMOS ROLE DE ADMINISTRADOR PARA PROBAR QUE FUNCIONE
+
   @UseGuards(RolesGuard)
-  //@Roles(TypeUser.administrator)
   @Get('profile')
   getProfile(@Request() req) {
     return req.user;

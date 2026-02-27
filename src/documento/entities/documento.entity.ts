@@ -16,7 +16,7 @@ export class Documento {
     @Column({ name: 'ruta_almacenamiento', type: 'varchar', length: 500, nullable: true })
     rutaAlmacenamiento: string;
 
-    @Column({ name: 'tipo_mime', type: 'varchar', length: 50, nullable: true })
+    @Column({ name: 'tipo_mime', type: 'varchar', length: 100, nullable: true })
     tipoMime: string;
 
     @Column({ name: 'peso_kb', type: 'int', nullable: true })
@@ -32,10 +32,10 @@ export class Documento {
     fechaRevision: Date;
 
     @Column({ name: 'observacion_actual', type: 'text', nullable: true })
-    observacionActual: string;
+    observacionActual: string | null;
 
 
-    @ManyToOne(() => Expediente)
+    @ManyToOne(() => Expediente, (expediente) => expediente.documentos)
     @JoinColumn({ name: 'id_expediente' })
     expediente: Expediente;
 

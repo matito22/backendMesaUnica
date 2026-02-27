@@ -1,109 +1,70 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, HttpCode, HttpStatus, UseInterceptors, UploadedFile } from '@nestjs/common';
-import { DocumentoService } from './documento.service';
-import { CreateDocumentoDto } from './dto/create-documento.dto';
-import { UpdateDocumentoDto } from './dto/update-documento.dto';
-import { EstadoDocumento } from '../enum/estado-documento';
-import { IsEnum, IsOptional, IsString, IsInt } from 'class-validator';
+// src/documento/documento.controller.ts
+import {Controller, Post,Get,Patch,Delete,Param, Body, UploadedFile, UseInterceptors, ParseIntPipe, Res, HttpCode, HttpStatus, BadRequestException} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import * as fs from 'fs';
-import * as path from 'path';
+import { Response } from 'express';
+import { DocumentoService } from './documento.service';
+import { SubirDocumentoDto } from './dto/subir-documento.dto';
+import { RevisarDocumentoDto } from './dto/revisar-documento.dto';
+import { MAX_TAMANIO_BYTES, multerConfig } from '../config/multer.config';
 
-// DTO inline para el cambio de estado (podés moverlo a dto/cambiar-estado-documento.dto.ts)
-class CambiarEstadoDto {
-  @IsEnum(EstadoDocumento)
-  estado: EstadoDocumento;
 
-  @IsOptional()
-  @IsString()
-  observacion?: string;
-
-  @IsOptional()
-  @IsInt()
-  idUsuarioRevisor?: number;
-}
-
-@Controller('documento')
+@Controller('documentos')
 export class DocumentoController {
   constructor(private readonly documentoService: DocumentoService) {}
 
-  @Post()
-  @HttpCode(HttpStatus.CREATED)
-  create(@Body() createDocumentoDto: CreateDocumentoDto) {
-    return this.documentoService.create(createDocumentoDto);
-  }
-
-  @Post('upload')
-  @UseInterceptors(FileInterceptor('file', {
-    storage: diskStorage({
-      destination: (req, file, cb) => {
-        const uploadPath = path.join(process.cwd(), 'uploads', 'documentos');
-        try {
-          fs.mkdirSync(uploadPath, { recursive: true });
-        } catch (err) {
-          // ignore
-        }
-        cb(null, uploadPath);
-      },
-      filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        const ext = path.extname(file.originalname);
-        cb(null, `${uniqueSuffix}${ext}`);
-      }
-    })
-  }))
-  @HttpCode(HttpStatus.CREATED)
-  createWithFile(
-    @UploadedFile() file: any,
-    @Body('idExpediente') idExpediente: string,
-    @Body('idUsuario') idUsuario: string,
-    @Body('idTipoDocumento') idTipoDocumento?: string,
+  // POST /documentos/subir
+  @Post('subir')
+  @UseInterceptors(FileInterceptor('archivo', multerConfig))
+  async subir(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() dto: SubirDocumentoDto,
   ) {
-    const payload = {
-      idExpediente: idExpediente ? parseInt(idExpediente, 10) : undefined,
-      idUsuario: idUsuario ? parseInt(idUsuario, 10) : undefined,
-      idTipoDocumento: idTipoDocumento ? parseInt(idTipoDocumento, 10) : undefined,
-    };
-    return this.documentoService.createFromUpload(file, payload);
+    if (!file) {
+      throw new BadRequestException(
+        `Se requiere un archivo. Tamaño máximo: ${MAX_TAMANIO_BYTES / 1024 / 1024} MB`,
+      );
+    }
+    return this.documentoService.subirArchivo(dto, file);
   }
 
-  @Get()
-  findAll() {
-    return this.documentoService.findAll();
-  }
-
-  // Rutas específicas ANTES de /:id
+  // GET /documentos/expediente/:idExpediente
   @Get('expediente/:idExpediente')
   findByExpediente(@Param('idExpediente', ParseIntPipe) idExpediente: number) {
     return this.documentoService.findByExpediente(idExpediente);
   }
 
+  // GET /documentos/:id
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.documentoService.findByExpediente(id);
+    return this.documentoService.findOne(id);
   }
 
-  @Patch(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() updateDocumentoDto: UpdateDocumentoDto) {
-    return this.documentoService.update(id, updateDocumentoDto);
-  }
-
-  // Endpoint específico para cambiar estado con observación (usado por revisores)
-  @Patch(':id/estado')
-  cambiarEstado(
+  // GET /documentos/:id/descargar
+  @Get(':id/descargar')
+  async descargar(
     @Param('id', ParseIntPipe) id: number,
-    @Body() dto: CambiarEstadoDto,
+    @Res() res: Response,
   ) {
-    return this.documentoService.cambiarEstado(
-      id,
-      dto.estado,
-      dto.idUsuarioRevisor,
-      dto.observacion,
-    );
+    const rutaAbsoluta = await this.documentoService.obtenerRutaParaDescarga(id);
+    // sendFile maneja automáticamente Content-Type y Content-Disposition
+    res.sendFile(rutaAbsoluta);
   }
 
+  // PATCH /documentos/:id/revisar
+  @Patch(':id/revisar')
+  revisar(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: RevisarDocumentoDto,
+    // TODO: reemplazar con el id del usuario extraído del JWT
+  ) {
+    const idUsuarioRevisor = 1;
+    return this.documentoService.revisarDocumento(id, idUsuarioRevisor, dto);
+  }
+
+  // DELETE /documentos/:id
   @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.documentoService.remove(id);
+  @HttpCode(HttpStatus.NO_CONTENT)
+  eliminar(@Param('id', ParseIntPipe) id: number) {
+    return this.documentoService.eliminar(id);
   }
 }

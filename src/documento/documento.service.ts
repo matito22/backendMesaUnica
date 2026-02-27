@@ -1,164 +1,183 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { CreateDocumentoDto } from './dto/create-documento.dto';
-import { UpdateDocumentoDto } from './dto/update-documento.dto';
+// src/documento/documento.service.ts
+import { BadRequestException,Injectable, NotFoundException,} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { unlink } from 'fs/promises';
+import { existsSync } from 'fs';
+import { join } from 'path';
 import { Documento } from './entities/documento.entity';
-import { HandleService } from '../utils/handle.service';
 import { EstadoDocumento } from 'src/enum/estado-documento';
-import * as path from 'path';
+import { Expediente } from '../expediente/entities/expediente.entity';
+import { TipoDocumento } from '../tipo-documento/entities/tipo-documento.entity';
+import { SubirDocumentoDto } from './dto/subir-documento.dto';
+import { RevisarDocumentoDto } from './dto/revisar-documento.dto';
 
 @Injectable()
-export class DocumentoService extends HandleService {
-
+export class DocumentoService {
   constructor(
     @InjectRepository(Documento)
-    private readonly documentoRepository: Repository<Documento>
-  ) {
-    super();
+    private readonly documentoRepository: Repository<Documento>,
+
+    @InjectRepository(Expediente)
+    private readonly expedienteRepository: Repository<Expediente>,
+
+    @InjectRepository(TipoDocumento)
+    private readonly tipoDocumentoRepository: Repository<TipoDocumento>,
+  ) {}
+
+  // ─── Subida / Reemplazo ──────────────────────────────────────────────────────
+async subirArchivo(dto: SubirDocumentoDto, file: Express.Multer.File): Promise<Documento> {
+
+
+  const expediente = await this.expedienteRepository.findOne({
+    where: { idExpediente: dto.idExpediente },
+  });
+  if (!expediente) throw new NotFoundException('Expediente no encontrado');
+
+  const tipoDocumento = await this.tipoDocumentoRepository.findOne({
+    where: { idTipoDocumento: dto.idTipoDocumento },
+  });
+  if (!tipoDocumento) throw new NotFoundException('Tipo de documento no encontrado');
+
+  const existente = await this.documentoRepository.findOne({
+    where: {
+      expediente: { idExpediente: dto.idExpediente },
+      tipoDocumento: { idTipoDocumento: dto.idTipoDocumento },
+    },
+  });
+
+  if (existente) {
+    const estadosQuePermiteResubida = [
+      EstadoDocumento.PENDIENTE_CARGA,
+      EstadoDocumento.PENDIENTE_RESUBIDA,
+    ];
+
+    if (!estadosQuePermiteResubida.includes(existente.estado)) {
+      throw new BadRequestException(
+        `No se puede resubir el documento en estado "${existente.estado}". ` +
+        `Solo se permite en: ${estadosQuePermiteResubida.join(', ')}`,
+      );
+    }
+
+    //Si esta en pendiente_resubida, eliminar archivo anterior del disco antes de guardar el nuevo
+    await this.eliminarArchivoDisco(existente.rutaAlmacenamiento);
+
+    existente.nombreArchivo      = file.originalname;
+    existente.rutaAlmacenamiento = file.path;
+    existente.tipoMime           = file.mimetype;
+    existente.pesoKb             = Math.ceil(file.size / 1024);
+    existente.estado             = EstadoDocumento.CARGADO;
+    existente.fechaUltimaCarga   = new Date();
+    existente.observacionActual  = null; // ✅ ver fix en entidad abajo
+
+    return this.documentoRepository.save(existente);
   }
 
-  async create(createDocumentoDto: CreateDocumentoDto): Promise<Documento> {
-    const documento = this.documentoRepository.create({
-      nombreArchivo: createDocumentoDto.nombreArchivo,
-      rutaAlmacenamiento: createDocumentoDto.rutaAlmacenamiento,
-      tipoMime: createDocumentoDto.tipoMime,
-      pesoKb: createDocumentoDto.pesoKb,
-      estado: createDocumentoDto.estado ?? EstadoDocumento.PENDIENTE_CARGA,
-      observacionActual: createDocumentoDto.observacionActual,
+  // ✅ expediente y tipoDocumento ya están definidas arriba
+  const nuevo = this.documentoRepository.create({
+    nombreArchivo: file.originalname,
+    rutaAlmacenamiento: file.path,
+    tipoMime: file.mimetype,
+    pesoKb: Math.ceil(file.size / 1024),
+    estado: EstadoDocumento.CARGADO,
+    fechaUltimaCarga: new Date(),
+    expediente,
+    tipoDocumento,
+  });
+
+  return this.documentoRepository.save(nuevo);
+}
+
+
+  // ─── Revisión ────────────────────────────────────────────────────────────────
+// Estado al revisar
+async revisarDocumento(
+  idDocumento: number,
+  idUsuarioRevisor: number,
+  dto: RevisarDocumentoDto,
+): Promise<Documento> {
+  const documento = await this.documentoRepository.findOne({
+    where: { idDocumento },
+    relations: ['expediente', 'tipoDocumento'],
+  });
+
+  if (!documento) throw new NotFoundException('Documento no encontrado');
+
+  // Solo se pueden revisar documentos que ya fueron cargados o están en revisión
+  const estadosRevisables = [
+    EstadoDocumento.CARGADO,
+    EstadoDocumento.EN_REVISION,
+  ];
+
+  if (!estadosRevisables.includes(documento.estado)) {
+    throw new BadRequestException(
+      `No se puede revisar un documento en estado "${documento.estado}". ` +
+      `Estados válidos: ${estadosRevisables.join(', ')}`,
+    );
+  }
+
+  documento.estado = dto.estado; // APROBADO o PENDIENTE_RESUBIDA
+  documento.observacionActual = dto.observacion ?? null;
+  documento.fechaRevision = new Date();
+  documento.usuarioRevisor = { idUsuarioMunicipal: idUsuarioRevisor } as any;
+
+  return this.documentoRepository.save(documento);
+}
+
+  // ─── Descarga ────────────────────────────────────────────────────────────────
+
+  async obtenerRutaParaDescarga(idDocumento: number): Promise<string> {
+    const documento = await this.documentoRepository.findOne({
+      where: { idDocumento },
     });
 
-    if (createDocumentoDto.idExpediente) {
-      (documento as any).expediente = { idExpediente: createDocumentoDto.idExpediente };
+    if (!documento) throw new NotFoundException('Documento no encontrado');
+
+    if (!documento.rutaAlmacenamiento || !existsSync(documento.rutaAlmacenamiento)) {
+      throw new NotFoundException('El archivo físico no existe en el servidor');
     }
 
-    if (createDocumentoDto.idTipoDocumento) {
-      (documento as any).tipoDocumento = { idTipoDocumento: createDocumentoDto.idTipoDocumento };
-    }
-
-    return this.documentoRepository.save(documento);
+    return documento.rutaAlmacenamiento;
   }
 
-  // Crea un Documento a partir de un archivo subido por Multer
-  async createFromUpload(
-    file: any,
-    meta: { idExpediente?: number; idUsuario?: number; idTipoDocumento?: number },
-  ): Promise<Documento> {
-    const documento = this.documentoRepository.create();
+  // ─── Consulta ────────────────────────────────────────────────────────────────
 
-    documento.nombreArchivo = file.originalname;
-    documento.rutaAlmacenamiento = path.join('uploads', 'documentos', file.filename);
-    documento.tipoMime = file.mimetype;
-    documento.pesoKb = Math.round(file.size / 1024);
-    documento.estado = EstadoDocumento.PENDIENTE_CARGA;
-    documento.fechaUltimaCarga = new Date();
-
-    if (meta.idExpediente) {
-      (documento as any).expediente = { idExpediente: meta.idExpediente };
-    }
-
-    if (meta.idTipoDocumento) {
-      (documento as any).tipoDocumento = { idTipoDocumento: meta.idTipoDocumento };
-    }
-
-    if (meta.idUsuario) {
-      (documento as any).usuarioRevisor = { idUsuario: meta.idUsuario };
-    }
-
-    return this.documentoRepository.save(documento);
-  }
-
-async findAll(): Promise<Documento[]> {
+  async findByExpediente(idExpediente: number): Promise<Documento[]> {
     return this.documentoRepository.find({
-        relations: ['expediente', 'tipoDocumento', 'usuarioRevisor'],
-        order: { fechaUltimaCarga: 'DESC' }
+      where: { expediente: { idExpediente } },
+      relations: ['tipoDocumento', 'usuarioRevisor'],
+      order: { fechaUltimaCarga: 'DESC' },
     });
-    // No hay nada que verificar: [] es una respuesta válida
-}
+  }
 
-
-
-async findByExpediente(idExpediente: number): Promise<Documento[]> {
-    const documentos = await this.documentoRepository.find({
-        where: { expediente: { idExpediente } },
-        relations: ['tipoDocumento', 'usuarioRevisor'],
-    });
-    // Solo si tiene sentido de negocio lanzar error cuando no hay docs:
-    if (documentos.length === 0) {
-        throw new NotFoundException(`No hay documentos para el expediente ${idExpediente}`);
-    }
-    return documentos;
-}
-
-
-  async findByEstado(estado: EstadoDocumento): Promise<Documento[]> {
-    const documentos = await this.documentoRepository.find({
-      where: { estado },
+  async findOne(idDocumento: number): Promise<Documento> {
+    const doc = await this.documentoRepository.findOne({
+      where: { idDocumento },
       relations: ['expediente', 'tipoDocumento', 'usuarioRevisor'],
-      order: { fechaUltimaCarga: 'DESC' }
     });
-    return documentos;
+    if (!doc) throw new NotFoundException('Documento no encontrado');
+    return doc;
   }
 
-  async findPendientes(): Promise<Documento[]> {
-    return this.findByEstado(EstadoDocumento.PENDIENTE_CARGA);
+  // ─── Eliminación ─────────────────────────────────────────────────────────────
+
+  async eliminar(idDocumento: number): Promise<void> {
+    const documento = await this.findOne(idDocumento);
+    await this.eliminarArchivoDisco(documento.rutaAlmacenamiento);
+    await this.documentoRepository.remove(documento);
   }
 
-  async findEnRevision(): Promise<Documento[]> {
-    return this.findByEstado(EstadoDocumento.EN_REVISION);
-  }
+  // ─── Helpers privados ────────────────────────────────────────────────────────
 
-  async cambiarEstado(
-    idDocumento: number, 
-    nuevoEstado: EstadoDocumento, 
-    idUsuarioRevisor?: number,
-    observacion?: string
-  ): Promise<Documento> {
-    let documento = await this.documentoRepository.findOneBy({ idDocumento });
-    documento = this.handleException(
-      documento,
-      NotFoundException,
-      `Documento con ID ${idDocumento} no encontrado`
-    );
-
-    documento.estado = nuevoEstado;
-    documento.fechaRevision = new Date();
-    
-    if (idUsuarioRevisor) {
-      (documento as any).usuarioRevisor = { idUsuario: idUsuarioRevisor };
+  private async eliminarArchivoDisco(ruta: string | null): Promise<void> {
+    //Verificamos si existe el archivo antes de intentar eliminarlo para evitar errores
+    if (ruta && existsSync(ruta)) {
+      try {
+        await unlink(ruta);
+      } catch {
+        // No lanzar error si el archivo ya no existe; solo loguear
+        console.warn(`No se pudo eliminar el archivo: ${ruta}`);
+      }
     }
-    
-    if (observacion) {
-      documento.observacionActual = observacion;
-    }
-
-    return this.documentoRepository.save(documento);
-  }
-
-  async update(id: number, updateDocumentoDto: UpdateDocumentoDto): Promise<Documento> {
-    let existingDocumento = await this.documentoRepository.findOneBy({ idDocumento: id });
-    existingDocumento = this.handleException(
-      existingDocumento,
-      NotFoundException,
-      `Documento con ID ${id} no encontrado`
-    );
-
-    // Si se está cargando un nuevo archivo, actualizar fecha
-    if (updateDocumentoDto.rutaAlmacenamiento) {
-      existingDocumento.fechaUltimaCarga = new Date();
-    }
-
-    Object.assign(existingDocumento, updateDocumentoDto);
-    return this.documentoRepository.save(existingDocumento);
-  }
-
-  async remove(id: number) {
-    let existingDocumento = await this.documentoRepository.findOneBy({ idDocumento: id });
-    existingDocumento = this.handleException(
-      existingDocumento,
-      NotFoundException,
-      `Documento con ID ${id} no encontrado`
-    );
-    return this.documentoRepository.remove(existingDocumento);
   }
 }

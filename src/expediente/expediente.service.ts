@@ -51,6 +51,10 @@ export class ExpedienteService extends HandleService {
     where: { idTipoExpediente: dto.idTipoExpediente }
   });
 
+  const expedientePadre= await this.expedienteRepository.findOne({
+    where: { idExpediente: dto.idExpedientePadre }
+  });
+
   if (!tipoExpediente) {
     throw new NotFoundException('El tipo de expediente no existe');
   }
@@ -62,6 +66,7 @@ export class ExpedienteService extends HandleService {
     estado: dto.estado ?? EstadoExpediente.INICIADO,
     contribuyente: contribuyente,
     tipoExpediente: tipoExpediente,
+    expedientePadre: expedientePadre || null,
   });
 
   return this.expedienteRepository.save(expediente);
@@ -71,7 +76,11 @@ export class ExpedienteService extends HandleService {
   findAll(): Promise<Expediente[]> {
     // FIX: la relación se llama 'contribuyente', no 'idContribuyente' (corregido en la entidad)
     return this.expedienteRepository.find({
-      relations: ['contribuyente', 'tipoExpediente'],
+      relations: ['contribuyente', 'tipoExpediente', 'expedientePadre'],
+      where: [
+        { estado: EstadoExpediente.INICIADO },
+        { estado: EstadoExpediente.EN_REVISION }
+      ],
       order: { fechaCreacion: 'DESC' }
     });
   }
@@ -79,7 +88,15 @@ export class ExpedienteService extends HandleService {
   async findOne(idExpediente: number): Promise<Expediente> {
     const expediente = await this.expedienteRepository.findOne({
       where: { idExpediente },
-      relations: ['contribuyente', 'tipoExpediente', 'expedientePadre'], // FIX: nombres correctos
+       relations: [
+      'contribuyente',
+      'tipoExpediente',
+      'tipoExpediente.requisitos',               
+      'tipoExpediente.requisitos.tipoDocumento', 
+      'expedientePadre',
+      'documentos',
+      'documentos.tipoDocumento',              
+    ],
     });
     return this.handleException(
       expediente,
@@ -91,7 +108,7 @@ export class ExpedienteService extends HandleService {
   async findByNumeroGde(numeroGde: string): Promise<Expediente> {
     const expediente = await this.expedienteRepository.findOne({
       where: { numeroGde },
-      relations: ['contribuyente', 'tipoExpediente'],
+      relations: ['contribuyente', 'tipoExpediente', 'expedientePadre'], // FIX: nombres correctos
     });
     return this.handleException(
       expediente,
@@ -107,7 +124,7 @@ async findByContribuyente(idContribuyente: number): Promise<Expediente[]> {
         idContribuyente: idContribuyente,
       },
     },
-    relations: ['tipoExpediente'],
+    relations: ['tipoExpediente', 'expedientePadre'], // FIX: nombres correctos
     order: { fechaCreacion: 'DESC' },
   });
 }
@@ -121,7 +138,7 @@ async findByContribuyente(idContribuyente: number): Promise<Expediente[]> {
             idExpediente: idExpedientePadre,
           },
         },
-        relations: ['tipoExpediente'],
+        relations: ['tipoExpediente', 'expedientePadre'],
         order: { fechaCreacion: 'DESC' },
       });
     }

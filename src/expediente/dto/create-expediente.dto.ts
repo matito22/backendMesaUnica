@@ -35,4 +35,6 @@ export class CreateExpedienteDto {
     @IsOptional()    
     datosFormulario?: Record<string, any>;
 
+
+
 }

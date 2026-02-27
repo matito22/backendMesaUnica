@@ -1,7 +1,8 @@
 import { Contribuyente } from "src/contribuyente/entities/contribuyente.entity";
+import { Documento } from "src/documento/entities/documento.entity";
 import { EstadoExpediente } from "src/enum/estado-expediente";
 import { TipoExpediente } from "src/tipo-expediente/entities/tipo-expediente.entity";
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity('expediente')
 export class Expediente {
@@ -41,4 +42,7 @@ export class Expediente {
     @ManyToOne(() => Expediente, { nullable: true })
     @JoinColumn({ name: 'id_expediente_padre' })
     expedientePadre: Expediente | null;
+
+    @OneToMany(() => Documento, (documento) => documento.expediente)
+    documentos: Documento[];
 }

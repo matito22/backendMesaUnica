@@ -64,7 +64,7 @@ export class TipoExpedienteService extends HandleService {
   async findOne(idTipoExpediente: number): Promise<TipoExpediente> {
     const tipo = await this.tipoExpedienteRepository.findOne({
       where: { idTipoExpediente },
-      relations: ['sectorResponsable'],
+      relations: ['sectorResponsable','schemaformulario']
     });
 
     return this.handleException(

@@ -5,9 +5,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Expediente } from './entities/expediente.entity';
 import { Contribuyente } from '../contribuyente/entities/contribuyente.entity';
 import { TipoExpediente } from '../tipo-expediente/entities/tipo-expediente.entity';
+import { DatosCatastrales } from 'src/datos-catastrales/entities/datos-catastrales.entity';
 
 @Module({
-   imports: [TypeOrmModule.forFeature([Expediente,Contribuyente,TipoExpediente])],
+  imports: [TypeOrmModule.forFeature([Expediente,Contribuyente,TipoExpediente,DatosCatastrales])],
   controllers: [ExpedienteController],
   providers: [ExpedienteService],
   exports: [ExpedienteService],

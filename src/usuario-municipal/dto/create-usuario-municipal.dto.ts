@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsString, MinLength } from "class-validator";
+import { IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsString, MinLength, IsOptional } from "class-validator";
 import { RolUser } from "src/enum/rol-user";
 import { SectorMunicipal } from "src/sector-municipal/entities/sector-municipal.entity";
 
@@ -26,9 +26,12 @@ export class CreateUsuarioMunicipalDto {
     @IsBoolean()
     activo: boolean;
 
-    @ApiProperty({ example: RolUser.MESA_ENTRADA })
+    // el rol se asigna automáticamente en el servicio según el sector;
+    // el cliente no debe confiar en este valor
+    @ApiProperty({ example: RolUser.MESA_ENTRADA, required: false })
     @IsEnum(RolUser)
-    rol: RolUser;
+    @IsOptional()
+    rol?: RolUser;
 
     @ApiProperty({example:1})
     @IsNumber()

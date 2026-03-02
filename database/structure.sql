@@ -148,6 +148,33 @@ CREATE TABLE `mensaje` (
   CONSTRAINT `fk_mensaje_usuario` FOREIGN KEY (`id_usuario_municipal`) REFERENCES `usuario_municipal` (`id_usuario`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+
+
+CREATE TABLE `datos_catastrales` (
+  `id_datos_catastrales` INT NOT NULL AUTO_INCREMENT,
+  `circunscripcion`      VARCHAR(100) NULL,
+  `seccion`              VARCHAR(100) NULL,
+  `fraccion`             VARCHAR(100) NULL,
+  `chacra`               VARCHAR(100) NULL,
+  `quinta`               VARCHAR(100) NULL,
+  `manzana`              VARCHAR(100) NULL,
+  `parcela`              VARCHAR(100) NULL,
+  `uh_uf`                VARCHAR(100) NULL,
+  `partida`              VARCHAR(100) NULL,
+  `sup_terreno`          DECIMAL(12, 2) NULL,
+  `sup_local`            DECIMAL(12, 2) NULL,
+  PRIMARY KEY (`id_datos_catastrales`)
+);ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- SE AGREGO ESTA ALTERACION A LA TABLA EXPEDIENTE
+ALTER TABLE `expediente`
+  ADD COLUMN `id_datos_catastrales` INT NULL UNIQUE,
+  ADD CONSTRAINT `FK_expediente_datos_catastrales`
+    FOREIGN KEY (`id_datos_catastrales`)
+    REFERENCES `datos_catastrales` (`id_datos_catastrales`)
+    ON DELETE SET NULL;
+
 -- ###############################################################
 -- DATOS SEMILLA (Basados en el documento de requerimientos)
 -- ###############################################################

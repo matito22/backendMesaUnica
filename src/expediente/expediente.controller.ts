@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, HttpCo
 import { ExpedienteService } from './expediente.service';
 import { CreateExpedienteDto } from './dto/create-expediente.dto';
 import { UpdateExpedienteDto } from './dto/update-expediente.dto';
+import { UpdateFormularioDto } from './dto/update-formulario.dto';
 
 // IMPORTANTE: Las rutas con path fijo (/gde, /contribuyente, /hijos)
 // deben ir ANTES de la ruta dinámica (:id) para que NestJS no las
@@ -36,18 +37,30 @@ export class ExpedienteController {
   @Get('hijos/:idExpedientePadre')
   findHijos(@Param('idExpedientePadre', ParseIntPipe) idExpedientePadre: number) {
     return this.expedienteService.findHijos(idExpedientePadre);
+
   }
 
+@Patch(':id/formulario')
+updateFormulario(
+  @Param('id', ParseIntPipe) id: number,
+  @Body() datosFormulario: any,
+) {
+  return this.expedienteService.updateFormulario(id, datosFormulario);
+}
+  
+  @Patch(':id')
+  update(@Param('id', ParseIntPipe) id: number, @Body() updateExpedienteDto: UpdateExpedienteDto) {
+    return this.expedienteService.update(id, updateExpedienteDto);
+  }
+
+  
   // Ruta dinámica por id — siempre al final
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.expedienteService.findOne(id);
   }
 
-  @Patch(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() updateExpedienteDto: UpdateExpedienteDto) {
-    return this.expedienteService.update(id, updateExpedienteDto);
-  }
+
 
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number) {

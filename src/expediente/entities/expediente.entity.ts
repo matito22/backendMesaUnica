@@ -2,7 +2,8 @@ import { Contribuyente } from "src/contribuyente/entities/contribuyente.entity";
 import { Documento } from "src/documento/entities/documento.entity";
 import { EstadoExpediente } from "src/enum/estado-expediente";
 import { TipoExpediente } from "src/tipo-expediente/entities/tipo-expediente.entity";
-import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, OneToOne } from "typeorm";
+import { DatosCatastrales } from 'src/datos-catastrales/entities/datos-catastrales.entity';
 
 @Entity('expediente')
 export class Expediente {
@@ -45,4 +46,8 @@ export class Expediente {
 
     @OneToMany(() => Documento, (documento) => documento.expediente)
     documentos: Documento[];
+
+    @OneToOne(() => DatosCatastrales, { cascade: true, nullable: true, eager: true })
+    @JoinColumn({ name: 'id_datos_catastrales' })
+    datosCatastrales: DatosCatastrales | null;
 }

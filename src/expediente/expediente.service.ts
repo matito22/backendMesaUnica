@@ -8,6 +8,8 @@ import { HandleService } from '../utils/handle.service';
 import { EstadoExpediente } from 'src/enum/estado-expediente';
 import { TipoExpediente } from 'src/tipo-expediente/entities/tipo-expediente.entity';
 import { Contribuyente } from 'src/contribuyente/entities/contribuyente.entity';
+import { DatosCatastrales } from 'src/datos-catastrales/entities/datos-catastrales.entity';
+
 
 @Injectable()
 export class ExpedienteService extends HandleService {
@@ -21,6 +23,9 @@ export class ExpedienteService extends HandleService {
 
     @InjectRepository(Contribuyente)
     private readonly contribuyenteRepository: Repository<Contribuyente>
+    ,
+    @InjectRepository(DatosCatastrales)
+    private readonly datosCatastralesRepository: Repository<DatosCatastrales>
   ) {
     super();
   }
@@ -69,6 +74,13 @@ export class ExpedienteService extends HandleService {
     expedientePadre: expedientePadre || null,
   });
 
+  // Si vienen datos catastrales, persistirlos en su tabla y vincularlos
+  if (dto.datosCatastrales) {
+    const datosEntity = this.datosCatastralesRepository.create(dto.datosCatastrales as any);
+    const savedDatos = await this.datosCatastralesRepository.save(datosEntity);
+    (expediente as any).datosCatastrales = savedDatos;
+  }
+
   return this.expedienteRepository.save(expediente);
 }
 
@@ -95,7 +107,8 @@ export class ExpedienteService extends HandleService {
       'tipoExpediente.requisitos.tipoDocumento', 
       'expedientePadre',
       'documentos',
-      'documentos.tipoDocumento',              
+      'documentos.tipoDocumento',
+      'datosCatastrales',
     ],
     });
     return this.handleException(
@@ -165,6 +178,20 @@ async findByContribuyente(idContribuyente: number): Promise<Expediente[]> {
 
     Object.assign(existingExpediente, updateExpedienteDto);
     return this.expedienteRepository.save(existingExpediente);
+  }
+
+async updateFormulario(id: number, datosFormulario: any) {
+    const expediente = await this.expedienteRepository.findOne({
+      where: { idExpediente: id },
+    });
+
+    if (!expediente) {
+      throw new NotFoundException('Expediente no encontrado');
+    }
+
+    expediente.datosFormulario = datosFormulario;
+
+    return this.expedienteRepository.save(expediente);
   }
 
   async remove(id: number) {

@@ -5,6 +5,7 @@ import * as bcrypt from 'bcrypt';
 import { UsuarioMunicipalService } from 'src/usuario-municipal/usuario-municipal.service';
 import { CreateUsuarioMunicipalDto } from 'src/usuario-municipal/dto/create-usuario-municipal.dto';
 import { UsuarioMunicipal } from 'src/usuario-municipal/entities/usuario-municipal.entity';
+import { RolUser } from '../enum/rol-user';
 import { SectorMunicipalService } from 'src/sector-municipal/sector-municipal.service';
 import { SectorMunicipal } from 'src/sector-municipal/entities/sector-municipal.entity';
 import { ContribuyenteService } from 'src/contribuyente/contribuyente.service';
@@ -188,11 +189,20 @@ async createMunicipal(createUserDto: CreateUsuarioMunicipalDto): Promise<Usuario
   // Obtenemos el objeto completo del sector
   const sector= await this.sectorMunicipalService.findOne(createUserDto.sector);
 
-  // Creamos el usuario
+  // determinamos el rol basado en el sector
+  let assignedRole: RolUser;
+  if (sector.nombre.toUpperCase() === 'MESA_ENTRADA') {
+    assignedRole = RolUser.MESA_ENTRADA;
+  } else {
+    assignedRole = RolUser.REVISOR;
+  }
+
+  // Creamos el usuario; ignoramos el rol enviado por el cliente
   const newUser = this.userService.create({
     ...createUserDto,
     password: hashedPassword,
     idSector: sector,
+    rol: assignedRole,
   });
 
   // Guardamos y retornamos

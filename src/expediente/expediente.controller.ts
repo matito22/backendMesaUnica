@@ -2,7 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, HttpCo
 import { ExpedienteService } from './expediente.service';
 import { CreateExpedienteDto } from './dto/create-expediente.dto';
 import { UpdateExpedienteDto } from './dto/update-expediente.dto';
-import { UpdateFormularioDto } from './dto/update-formulario.dto';
+
 
 // IMPORTANTE: Las rutas con path fijo (/gde, /contribuyente, /hijos)
 // deben ir ANTES de la ruta dinámica (:id) para que NestJS no las
@@ -40,10 +40,18 @@ export class ExpedienteController {
 
   }
 
-@Patch(':id/formulario')
+/*@Patch(':id/formulario')
 updateFormulario(
   @Param('id', ParseIntPipe) id: number,
   @Body() datosFormulario: any,
+) {
+  return this.expedienteService.updateFormulario(id, datosFormulario);
+}*/
+
+@Patch(':id/formulario')
+updateFormulario(
+  @Param('id', ParseIntPipe) id: number,
+  @Body() datosFormulario: Record<string, any>,
 ) {
   return this.expedienteService.updateFormulario(id, datosFormulario);
 }

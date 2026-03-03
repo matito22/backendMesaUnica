@@ -48,10 +48,10 @@ async validateUser(nombre: string, pass: string): Promise<any> {
   }
 
 //Metodo que valida el contribuyente y retorna el contribuyente
-async validateContribuyente(email: string, pass: string): Promise<any> {
-  console.log('Buscando contribuyente con email:', email);
+async validateContribuyente(dni: string, pass: string): Promise<any> {
+  console.log('Buscando contribuyente con dni:', dni);
   
-  const contribuyente = await this.contribuyenteService.findByEmailOptional(email);
+  const contribuyente = await this.contribuyenteService.findByDni(dni);
   console.log('Contribuyente encontrado:', contribuyente);
 
   if (!contribuyente) {
@@ -100,7 +100,7 @@ async loginContribuyente(contribuyente: any) {
 
   console.log('Generando tokens para contribuyente:', contribuyente); // Verificar el contribuyente recibido
   const payload = {
-    username: contribuyente.email,
+    username: contribuyente.dni,
     sub: contribuyente.idContribuyente,
     role: 'contribuyente' // Asignar un rol fijo para contribuyentes
   };

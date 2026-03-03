@@ -14,6 +14,10 @@ export class ContribuyenteController {
   search(@Query('search') search: string): Promise<Contribuyente[]> {
     return this.contribuyenteService.buscarContribuyentes(search);
   }
+@Get('dni/:dni')
+getContribuyenteByDni(@Param('dni') dni: string): Promise<Contribuyente | null> {
+  return this.contribuyenteService.findByDni(dni);
+}
 
   @Get()
   findAll() {

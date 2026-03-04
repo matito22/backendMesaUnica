@@ -1,5 +1,5 @@
 // src/documento/documento.controller.ts
-import {Controller, Post,Get,Patch,Delete,Param, Body, UploadedFile, UseInterceptors, ParseIntPipe, Res, HttpCode, HttpStatus, BadRequestException} from '@nestjs/common';
+import {Controller, Post,Get,Patch,Delete,Param, Body, UploadedFile, UseInterceptors, ParseIntPipe, Res, HttpCode, HttpStatus, BadRequestException, Req} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { DocumentoService } from './documento.service';
@@ -46,20 +46,21 @@ export class DocumentoController {
     @Res() res: Response,
   ) {
     const rutaAbsoluta = await this.documentoService.obtenerRutaParaDescarga(id);
+  
     // sendFile maneja automáticamente Content-Type y Content-Disposition
     res.sendFile(rutaAbsoluta);
   }
 
-  // PATCH /documentos/:id/revisar
-  @Patch(':id/revisar')
-  revisar(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: RevisarDocumentoDto,
-    // TODO: reemplazar con el id del usuario extraído del JWT
-  ) {
-    const idUsuarioRevisor = 1;
-    return this.documentoService.revisarDocumento(id, idUsuarioRevisor, dto);
-  }
+@Patch(':id/revisar')
+revisar(
+  @Param('id', ParseIntPipe) id: number,
+  @Body() dto: RevisarDocumentoDto,
+  @Req() req: Request,
+) {
+  const idUsuarioRevisor = (req as any).user.userId;//Obtenemos el id del usuario que solicito la revisión
+  console.log('ID del usuario revisor:', idUsuarioRevisor);
+  return this.documentoService.revisarDocumento(id, idUsuarioRevisor, dto);
+}
 
   // DELETE /documentos/:id
   @Delete(':id')

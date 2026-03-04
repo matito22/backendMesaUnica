@@ -11,6 +11,7 @@ import { Expediente } from '../expediente/entities/expediente.entity';
 import { TipoDocumento } from '../tipo-documento/entities/tipo-documento.entity';
 import { SubirDocumentoDto } from './dto/subir-documento.dto';
 import { RevisarDocumentoDto } from './dto/revisar-documento.dto';
+import { UsuarioMunicipal } from 'src/usuario-municipal/entities/usuario-municipal.entity';
 
 @Injectable()
 export class DocumentoService {
@@ -23,6 +24,9 @@ export class DocumentoService {
 
     @InjectRepository(TipoDocumento)
     private readonly tipoDocumentoRepository: Repository<TipoDocumento>,
+
+    @InjectRepository(UsuarioMunicipal)
+    private readonly usuarioRepository: Repository<UsuarioMunicipal>,
   ) {}
 
   // ─── Subida / Reemplazo ──────────────────────────────────────────────────────
@@ -101,6 +105,13 @@ async revisarDocumento(
     relations: ['expediente', 'tipoDocumento'],
   });
 
+  // ✅ Cargá la entidad real del usuario
+  const revisor = await this.usuarioRepository.findOne({
+    where: { idUsuario: idUsuarioRevisor }
+  });
+
+  if (!revisor) throw new NotFoundException('Usuario revisor no encontrado');
+
   if (!documento) throw new NotFoundException('Documento no encontrado');
 
   // Solo se pueden revisar documentos que ya fueron cargados o están en revisión
@@ -119,7 +130,9 @@ async revisarDocumento(
   documento.estado = dto.estado; // APROBADO o PENDIENTE_RESUBIDA
   documento.observacionActual = dto.observacion ?? null;
   documento.fechaRevision = new Date();
-  documento.usuarioRevisor = { idUsuarioMunicipal: idUsuarioRevisor } as any;
+  documento.usuarioRevisor = revisor;
+
+  console.log('Documento revisado:', documento);
 
   return this.documentoRepository.save(documento);
 }

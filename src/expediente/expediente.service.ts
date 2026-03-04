@@ -107,6 +107,7 @@ export class ExpedienteService extends HandleService {
       'tipoExpediente.requisitos.tipoDocumento', 
       'expedientePadre',
       'documentos',
+      'documentos.usuarioRevisor',
       'documentos.tipoDocumento',
       'datosCatastrales',
     ],

@@ -14,21 +14,21 @@ export class ContribuyenteController {
   search(@Query('search') search: string): Promise<Contribuyente[]> {
     return this.contribuyenteService.buscarContribuyentes(search);
   }
-@Get('dni/:dni')
-getContribuyenteByDni(@Param('dni') dni: string): Promise<Contribuyente | null> {
-  return this.contribuyenteService.findByDni(dni);
-}
+  @Get('dni/:dni')
+  getContribuyenteByDni(@Param('dni') dni: string): Promise<Contribuyente | null> {
+    return this.contribuyenteService.findByDni(dni);
+  }
 
   @Get()
   findAll() {
     return this.contribuyenteService.findAll();
   }
 
-  @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.contribuyenteService.findOne(+id);
-  }
 
+
+
+  
+  //Aun no se usan en el sistema
   @Patch(':id')
   update(@Param('id', ParseIntPipe) id: number, @Body() updateContribuyenteDto: UpdateContribuyenteDto) {
     return this.contribuyenteService.update(+id, updateContribuyenteDto);

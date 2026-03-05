@@ -25,9 +25,12 @@ export class UsuarioMunicipal {
     activo:boolean;
 
 
+    @Column({ name: 'id_sector', type: 'int' })
+    idSector: number; //FK plana, esto es lo que va al JWT
+
     @ManyToOne(() => SectorMunicipal)
     @JoinColumn({ name: 'id_sector' })
-    idSector: SectorMunicipal;
+    sector: SectorMunicipal;
 
 
     @Column({ name:"current_hashed_refresh_token",type: 'varchar', length: 500, nullable: true })

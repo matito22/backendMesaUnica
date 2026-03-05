@@ -14,7 +14,8 @@ export class SectorMunicipal {
     @Column({name:'activo',type:'tinyint',width:1,default:true})
     activo:boolean;
 
-    @OneToMany(() => UsuarioMunicipal, (usuarioMunicipal) => usuarioMunicipal.idSector,{eager:false})
+ 
+    @OneToMany(() => UsuarioMunicipal, (usuarioMunicipal) => usuarioMunicipal.sector)
     usuarios: UsuarioMunicipal[];
 
     @OneToMany(() => TipoDocumento, (tipoDocumento) => tipoDocumento.idSectorResponsable,{eager:false})

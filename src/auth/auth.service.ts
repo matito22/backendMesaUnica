@@ -79,7 +79,8 @@ async login(user: any) {
     const payload = {
       username: user.nombre,
       sub: user.idUsuario,
-      role: user.rol
+      role: user.rol,
+      idSector: user.idSector
     };
 
     const token = this.jwtService.sign(payload, { expiresIn: '15m' });
@@ -197,13 +198,14 @@ async createMunicipal(createUserDto: CreateUsuarioMunicipalDto): Promise<Usuario
     assignedRole = RolUser.REVISOR;
   }
 
-  // Creamos el usuario; ignoramos el rol enviado por el cliente
-  const newUser = this.userService.create({
-    ...createUserDto,
-    password: hashedPassword,
-    idSector: sector,
-    rol: assignedRole,
-  });
+const { sector: _, ...dtoSinSector } = createUserDto; //excluímos el campo sector del DTO
+
+const newUser = this.userService.create({
+  ...dtoSinSector,
+  password: hashedPassword,
+  idSector: sector.idSector,
+  rol: assignedRole,
+});
 
   // Guardamos y retornamos
   return this.userService.save(newUser);
@@ -259,24 +261,23 @@ async createContribuyente(createContribuyenteDto: CreateContribuyenteDto): Promi
 
 }
 
-// auth.service.ts
+//Se usa internamente en el backend para activar un contribuyente
 async activateContribuyente(dto: ActivateContribuyenteDto): Promise<void> {
   const { id, code, password } = dto;
-
   const contribuyente = await this.contribuyenteService.finOneInactiveByIdAndActivationToken(id, code);
   
   if (!contribuyente) {
     throw new UnauthorizedException('El contribuyente no existe o el token no es válido');
   }
 
-  const hashedPassword = await bcrypt.hash(password, 10); // ✅ Hashear la nueva password
+  const hashedPassword = await bcrypt.hash(password, 10);
 
-  console.log(`Activando contribuyente ${contribuyente.nombre} con ID ${contribuyente.idContribuyente}`);
   await this.contribuyenteService.activateContribuyente(contribuyente, hashedPassword);
 }
 
-  //Eliminamos el refresh token de la base de datos, lo usamos en el controller de auth
-  async logout(idUser: number) {
+
+//LOGOUT DEL USUARIO MUNICIPAL Y DEL CONTRIBUYENTE, AMBOS BORRAN EL REFRESH
+async logout(idUser: number) {
   await this.userService.removeRefreshToken(idUser);
 }
 

@@ -21,10 +21,10 @@ export class ContribuyenteService  extends HandleService {
    create(data: Partial<Contribuyente>): Contribuyente {
      return this.contribuyenteRepository.create(data);
    }
- 
    save(contribuyente: Contribuyente): Promise<Contribuyente> {
      return this.contribuyenteRepository.save(contribuyente);
    }
+
 
  findAll():Promise<Contribuyente[]> {
    const contribuyente = this.contribuyenteRepository.find();
@@ -35,26 +35,75 @@ export class ContribuyenteService  extends HandleService {
        );
   }
 
+
+ async findByDni(dni: string): Promise<Contribuyente | null> {
+    return this.contribuyenteRepository.findOneBy({ dni });
+  }
+
+
+ async buscarContribuyentes(search?: string): Promise<Contribuyente[]> {
+    const query = this.contribuyenteRepository.createQueryBuilder('c');
+
+    if (search?.trim()) {
+      const words = search.trim().split(/\s+/);
+      query.where(
+        words
+          .map((_, i) => `(LOWER(c.dni) LIKE :word${i})`)
+          .join(' OR '),
+        Object.fromEntries(words.map((word, i) => [`word${i}`, `%${word.toLowerCase()}%`]))
+      );
+    }
+
+    return query.limit(20).getMany();
+  }
+
+
+//Se usa internamente en el backend para buscar un contribuyente por id
   async findOne(idContribuyente: number):Promise<Contribuyente> {
-    const sector = await this.contribuyenteRepository.findOneBy({ idContribuyente });
+    const contribuyente = await this.contribuyenteRepository.findOneBy({ idContribuyente });
       return this.handleException(
-        sector,
+        contribuyente,
         NotFoundException,
         `Contribuyente with ID ${idContribuyente} not found`
       );
   }
 
 
-async findByDni(dni: string): Promise<Contribuyente | null> {
-  // NO uses handleException aquí, solo retorna null si no existe
-  return this.contribuyenteRepository.findOneBy({ dni });
+
+//FUNCIONES INTERNAS UTILIZADAS EN AUTHSERVICE PARA ACTIVAR UN CONTRIBUYENTE
+async activateContribuyente(contribuyente: Contribuyente, hashedPassword: string): Promise<void> {
+  contribuyente.activo = true;
+  contribuyente.password = hashedPassword;   
+  contribuyente.activationToken = null;       // Invalida el token para que no se reutilice
+  await this.save(contribuyente);
 }
 
-async findByEmailOptional(email: string): Promise<Contribuyente | null> {
-  return this.contribuyenteRepository.findOneBy({ email });
+async finOneInactiveByIdAndActivationToken(id: number, code:string): Promise<Contribuyente | null> {
+  return this.contribuyenteRepository.findOneBy({ idContribuyente: id, activationToken:code, activo: false });
 }
-  
 
+
+
+//UTILIZADO EN EL LOGIN DE AUTHSERVICE PARA EL CONTRIBUYENTE, GUARDANDO EL REFRESH  TOKEN EN LA BASE DE DATOS
+async setCurrentRefreshToken(idContribuyente: number, token: string) {
+  const hashedToken = await bcrypt.hash(token, 10); 
+  await this.contribuyenteRepository.update(idContribuyente, { currentHashedRefreshToken: hashedToken });
+}
+
+//UTILIZADO EN LOGOUT DE AUTHSERVICE PARA EL CONTRIBUYENTE
+async removeRefreshToken(idContribuyente: number): Promise<void> {
+  if (!idContribuyente) {
+    throw new Error('Se requiere un ID para eliminar el refresh token');
+  }
+
+  await this.contribuyenteRepository.update(
+    { idContribuyente },
+    { currentHashedRefreshToken: null }
+  );
+}
+
+
+ //AUN NO SE UTILIZAN EN EL SISTEMA
   async update(idContribuyente: number, updateContribuyenteDto: UpdateContribuyenteDto): Promise<Contribuyente> {
     let existingContribuyente = await this.contribuyenteRepository.findOneBy({ idContribuyente });
        existingContribuyente = this.handleException(
@@ -77,47 +126,5 @@ async findByEmailOptional(email: string): Promise<Contribuyente | null> {
      }
 
 
-async activateContribuyente(contribuyente: Contribuyente, hashedPassword: string): Promise<void> {
-  contribuyente.activo = true;
-  contribuyente.password = hashedPassword;    // ✅ Reemplaza la temporal
-  contribuyente.activationToken = null;       // ✅ Invalida el token para que no se reutilice
-  await this.save(contribuyente);
-}
-async finOneInactiveByIdAndActivationToken(id: number, code:string): Promise<Contribuyente | null> {
-  return this.contribuyenteRepository.findOneBy({ idContribuyente: id, activationToken:code, activo: false });
-}
-
-async setCurrentRefreshToken(idContribuyente: number, token: string) {
-  const hashedToken = await bcrypt.hash(token, 10); 
-  await this.contribuyenteRepository.update(idContribuyente, { currentHashedRefreshToken: hashedToken });
-}
-
-async removeRefreshToken(idContribuyente: number): Promise<void> {
-  if (!idContribuyente) {
-    throw new Error('Contribuyente ID is required to remove refresh token');
-  }
-
-  await this.contribuyenteRepository.update(
-    { idContribuyente },
-    { currentHashedRefreshToken: null }
-  );
-}
-
-
- async buscarContribuyentes(search?: string): Promise<Contribuyente[]> {
-    const query = this.contribuyenteRepository.createQueryBuilder('c');
-
-    if (search?.trim()) {
-      const words = search.trim().split(/\s+/);
-      query.where(
-        words
-          .map((_, i) => `(LOWER(c.dni) LIKE :word${i})`)
-          .join(' OR '),
-        Object.fromEntries(words.map((word, i) => [`word${i}`, `%${word.toLowerCase()}%`]))
-      );
-    }
-
-    return query.limit(20).getMany();
-  }
 
 }

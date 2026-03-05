@@ -1,7 +1,9 @@
 // src/documento/dto/revisar-documento.dto.ts
 import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
-import { EstadoDocumento } from 'src/enum/estado-documento';
+import { EstadoDocumento } from '../../enum/estado-documento';
 
+
+//Este DTO se utiliza en el controlador de revisar documento
 export class RevisarDocumentoDto {
   @IsEnum([EstadoDocumento.APROBADO, EstadoDocumento.PENDIENTE_RESUBIDA], {
     message: 'El estado debe ser APROBADO o PENDIENTE_RESUBIDA',

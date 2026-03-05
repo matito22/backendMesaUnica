@@ -12,6 +12,7 @@ import { TipoDocumento } from '../tipo-documento/entities/tipo-documento.entity'
 import { SubirDocumentoDto } from './dto/subir-documento.dto';
 import { RevisarDocumentoDto } from './dto/revisar-documento.dto';
 import { UsuarioMunicipal } from 'src/usuario-municipal/entities/usuario-municipal.entity';
+import { HistorialDocumento } from 'src/historial-documento/entities/historial-documento.entity';
 
 @Injectable()
 export class DocumentoService {
@@ -27,22 +28,27 @@ export class DocumentoService {
 
     @InjectRepository(UsuarioMunicipal)
     private readonly usuarioRepository: Repository<UsuarioMunicipal>,
+
+    @InjectRepository(HistorialDocumento)
+    private readonly historialRepository: Repository<HistorialDocumento>,
   ) {}
 
-  // ─── Subida / Reemplazo ──────────────────────────────────────────────────────
+  //SUBIMOS UN ARCHIVO O REEMPLAZAMOS UN EXISTENTE EN CASO DE QUE CUMPLA EL CRITERIO DE VALIDACION
 async subirArchivo(dto: SubirDocumentoDto, file: Express.Multer.File): Promise<Documento> {
 
-
+  //VALIDAMOS QUE EXISTA EL EXPEDIENTE
   const expediente = await this.expedienteRepository.findOne({
     where: { idExpediente: dto.idExpediente },
   });
   if (!expediente) throw new NotFoundException('Expediente no encontrado');
 
+  //VALIDAMOS QUE EXISTA EL TIPO DE DOCUMENTO
   const tipoDocumento = await this.tipoDocumentoRepository.findOne({
     where: { idTipoDocumento: dto.idTipoDocumento },
   });
   if (!tipoDocumento) throw new NotFoundException('Tipo de documento no encontrado');
 
+  //VALIDAMOS QUE NO EXISTA YA EL DOCUMENTO
   const existente = await this.documentoRepository.findOne({
     where: {
       expediente: { idExpediente: dto.idExpediente },
@@ -50,12 +56,14 @@ async subirArchivo(dto: SubirDocumentoDto, file: Express.Multer.File): Promise<D
     },
   });
 
+  
   if (existente) {
     const estadosQuePermiteResubida = [
       EstadoDocumento.PENDIENTE_CARGA,
       EstadoDocumento.PENDIENTE_RESUBIDA,
     ];
 
+  //SI EXISTE PERO SU ESTADO NO SE ENCUENTRA EN PENDIENTE CARGA O PENDIENTE RESUBIDA, LANZAMOS UNA EXCEPCION
     if (!estadosQuePermiteResubida.includes(existente.estado)) {
       throw new BadRequestException(
         `No se puede resubir el documento en estado "${existente.estado}". ` +
@@ -63,7 +71,7 @@ async subirArchivo(dto: SubirDocumentoDto, file: Express.Multer.File): Promise<D
       );
     }
 
-    //Si esta en pendiente_resubida, eliminar archivo anterior del disco antes de guardar el nuevo
+    //SI ESTA PENDIENTE RESUBIDA SE ELIMINA EL ARCHIVO ANTERIOR DEL DISCO
     await this.eliminarArchivoDisco(existente.rutaAlmacenamiento);
 
     existente.nombreArchivo      = file.originalname;
@@ -95,48 +103,41 @@ async subirArchivo(dto: SubirDocumentoDto, file: Express.Multer.File): Promise<D
 
   // ─── Revisión ────────────────────────────────────────────────────────────────
 // Estado al revisar
-async revisarDocumento(
-  idDocumento: number,
-  idUsuarioRevisor: number,
-  dto: RevisarDocumentoDto,
-): Promise<Documento> {
+// documento.service.ts
+async revisarDocumento(idDocumento: number, dto: RevisarDocumentoDto, idUsuario: number): Promise<Documento> {
+
   const documento = await this.documentoRepository.findOne({
-    where: { idDocumento },
-    relations: ['expediente', 'tipoDocumento'],
+    where: { idDocumento }
   });
-
-  // ✅ Cargá la entidad real del usuario
-  const revisor = await this.usuarioRepository.findOne({
-    where: { idUsuario: idUsuarioRevisor }
-  });
-
-  if (!revisor) throw new NotFoundException('Usuario revisor no encontrado');
-
   if (!documento) throw new NotFoundException('Documento no encontrado');
 
-  // Solo se pueden revisar documentos que ya fueron cargados o están en revisión
-  const estadosRevisables = [
-    EstadoDocumento.CARGADO,
-    EstadoDocumento.EN_REVISION,
-  ];
+  const estadoAnterior = documento.estado;
 
-  if (!estadosRevisables.includes(documento.estado)) {
-    throw new BadRequestException(
-      `No se puede revisar un documento en estado "${documento.estado}". ` +
-      `Estados válidos: ${estadosRevisables.join(', ')}`,
-    );
-  }
+    // ✅ usuarioRevisor es relación, no columna plana
+  const usuarioRevisor = await this.usuarioRepository.findOne({
+    where: { idUsuario }
+  });
 
-  documento.estado = dto.estado; // APROBADO o PENDIENTE_RESUBIDA
+  // Actualizás el documento
+  documento.estado = dto.estado;
   documento.observacionActual = dto.observacion ?? null;
   documento.fechaRevision = new Date();
-  documento.usuarioRevisor = revisor;
+  documento.usuarioRevisor = usuarioRevisor;
 
-  console.log('Documento revisado:', documento);
+  await this.documentoRepository.save(documento);
 
-  return this.documentoRepository.save(documento);
+  // ✅ Guardás el historial
+  const historial = this.historialRepository.create({
+    idDocumento: documento.idDocumento,
+    estadoAnterior,
+    estadoNuevo: dto.estado,
+    observacion: dto.observacion ?? undefined,
+    usuarioActor: usuarioRevisor,
+  });
+  await this.historialRepository.save(historial);
+
+  return documento;
 }
-
   // ─── Descarga ────────────────────────────────────────────────────────────────
 
   async obtenerRutaParaDescarga(idDocumento: number): Promise<string> {

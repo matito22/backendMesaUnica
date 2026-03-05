@@ -8,11 +8,12 @@ import { Documento } from './entities/documento.entity';
 import { Expediente } from 'src/expediente/entities/expediente.entity';
 import { TipoDocumento } from 'src/tipo-documento/entities/tipo-documento.entity';
 import { UsuarioMunicipal } from 'src/usuario-municipal/entities/usuario-municipal.entity';
+import { HistorialDocumento } from 'src/historial-documento/entities/historial-documento.entity';
 
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Documento, Expediente, TipoDocumento,UsuarioMunicipal]),
+    TypeOrmModule.forFeature([Documento, Expediente, TipoDocumento,UsuarioMunicipal,HistorialDocumento]),
 
     // Registro global de Multer (opcional si usas config por interceptor)
     MulterModule.register({ dest: './uploads' }),

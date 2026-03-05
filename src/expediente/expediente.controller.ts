@@ -1,7 +1,11 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, HttpCode, HttpStatus, UseGuards, Request } from '@nestjs/common';
 import { ExpedienteService } from './expediente.service';
 import { CreateExpedienteDto } from './dto/create-expediente.dto';
 import { UpdateExpedienteDto } from './dto/update-expediente.dto';
+import { Roles } from '../auth/roles.decorator';
+import { RolUser } from '../enum/rol-user';
+import { RolesGuard } from '../auth/roles.guard';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 
 // IMPORTANTE: Las rutas con path fijo (/gde, /contribuyente, /hijos)
@@ -33,6 +37,17 @@ export class ExpedienteController {
   findByContribuyente(@Param('idContribuyente', ParseIntPipe) idContribuyente: number) {
     return this.expedienteService.findByContribuyente(idContribuyente);
   }
+
+
+  @Get('revisor')
+  @Roles(RolUser.REVISOR)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  getByRevisor(@Request() req) {
+  const idSector: number = req.user.idSector;
+  console.log('ID del sector:', idSector);
+  console.log('Rol del usuario:', req.user.role); // ← role, no rol
+  return this.expedienteService.findBySectorResponsable(idSector);
+}
 
   @Get('hijos/:idExpedientePadre')
   findHijos(@Param('idExpedientePadre', ParseIntPipe) idExpedientePadre: number) {

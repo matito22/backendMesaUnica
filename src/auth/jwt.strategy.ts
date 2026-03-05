@@ -32,7 +32,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   //Este validate es el que chequea si el jwt secret es valido y si no expiro y devuelve el usuario que se guarda en req.user
   async validate(payload: any) {
 
-    return { userId: payload.sub, username: payload.username,role:payload.role };
+    return { userId: payload.sub, username: payload.username,role:payload.role,idSector:payload.idSector};
   }
 
 }

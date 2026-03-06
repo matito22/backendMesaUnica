@@ -1,4 +1,6 @@
-import { ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException, Injectable, NotFoundException, UnauthorizedException
+} from '@nestjs/common';
 import { HandleService } from '../utils/handle.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -16,66 +18,54 @@ import { v4 as uuidv4 } from 'uuid';
 import { MailService } from 'src/mail/mail.service';
 import { ActivateContribuyenteDto } from './dto/activate-contribuyente.dto';
 
-
-
 @Injectable()
 export class AuthService extends HandleService {
 
-//DE MANERA MAS FACIL  Y ESCALABLE CON PASSPORT
-
-constructor(private jwtService:JwtService,private userService:UsuarioMunicipalService, private sectorMunicipalService:SectorMunicipalService,
-  private contribuyenteService:ContribuyenteService,private readonly mailService: MailService) {  
-    super()
-}
-
-
-//Metodo que valida el usuario y retorna el usuario,llamado desde local.strategy.ts
-async validateUser(nombre: string, pass: string): Promise<any> {
-    const user = await this.userService.findByNameOptional(nombre);//Se utiliza este porque devuevle null si no existe, y es lo que passport necesita
-
-    if (!user) {
-      return null;
-    }
-
-    const isMatch = await bcrypt.compare(pass, user.password);
-
-    if (!isMatch) {
-      return null;
-    }
-
-    const { password, ...result } = user;//Aca sacamos del usuario la password
-    return result;//Para poder devolver sin clave al usuario
+  constructor(
+    private jwtService: JwtService,
+    private userService: UsuarioMunicipalService,
+    private sectorMunicipalService: SectorMunicipalService,
+    private contribuyenteService: ContribuyenteService,
+    private readonly mailService: MailService
+  ) {
+    super();
   }
 
-//Metodo que valida el contribuyente y retorna el contribuyente
-async validateContribuyente(dni: string, pass: string): Promise<any> {
-  console.log('Buscando contribuyente con dni:', dni);
-  
-  const contribuyente = await this.contribuyenteService.findByDni(dni);
-  console.log('Contribuyente encontrado:', contribuyente);
+  // [S-04] Valida usuario y contraseña. Llamado por local.strategy.ts en el login.
+  // Retorna null (sin excepción) porque Passport lo requiere así para devolver 401.
+  async validateUser(nombre: string, pass: string): Promise<any> {
+    const user = await this.userService.findByNameOptional(nombre); // Retorna null si no existe
 
-  if (!contribuyente) {
-    console.log('No existe el contribuyente');
-    return null;
+    if (!user) return null;
+
+    const isMatch = await bcrypt.compare(pass, user.password); // Compara contra el hash guardado
+    if (!isMatch) return null;
+
+    const { password, ...result } = user; // Excluimos la password antes de retornar
+    return result;
   }
 
-  if (!contribuyente.activo) {
-    console.log('Contribuyente no está activo');
-    return null;
+  // [S-06] Igual que [S-04] pero para contribuyentes. Verifica además que esté activo.
+  async validateContribuyente(dni: string, pass: string): Promise<any> {
+    console.log('Buscando contribuyente con dni:', dni);
+    const contribuyente = await this.contribuyenteService.findByDni(dni);
+    console.log('Contribuyente encontrado:', contribuyente);
+
+    if (!contribuyente) { console.log('No existe el contribuyente'); return null; }
+    if (!contribuyente.activo) { console.log('Contribuyente no está activo'); return null; } // Solo puede loguear si activó la cuenta
+
+    const isMatch = await bcrypt.compare(pass, contribuyente.password);
+    console.log('Password coincide:', isMatch);
+
+    if (!isMatch) return null;
+
+    const { password, ...result } = contribuyente;
+    return result;
   }
 
-  const isMatch = await bcrypt.compare(pass, contribuyente.password);
-  console.log('Password coincide:', isMatch);
-
-  if (!isMatch) return null;
-
-  const { password, ...result } = contribuyente;
-  return result;
-}
-
-//Validamos el usuario y retorna los token y el refresh token
-async login(user: any) {
- 
+  // [S-03] Genera access_token (15min) y refresh_token (7d) para el usuario municipal.
+  // Guarda el refresh_token hasheado en DB para poder invalidarlo en el logout.
+  async login(user: any) {
     const payload = {
       username: user.nombre,
       sub: user.idUsuario,
@@ -84,205 +74,167 @@ async login(user: any) {
     };
 
     const token = this.jwtService.sign(payload, { expiresIn: '15m' });
+    const refreshToken = this.jwtService.sign(
+      { ...payload, type: 'refresh' }, // type:'refresh' para diferenciarlo del access_token
+      { expiresIn: '7d' }
+    );
 
+    await this.userService.setCurrentRefreshToken(user.idUsuario, refreshToken); // Guarda el hash en DB
+
+    return { token, refreshToken };
+  }
+
+  // [S-05] Igual que [S-03] pero para contribuyentes. El rol es fijo ('contribuyente').
+  async loginContribuyente(contribuyente: any) {
+    console.log('Generando tokens para contribuyente:', contribuyente);
+    const payload = {
+      username: contribuyente.dni,
+      sub: contribuyente.idContribuyente,
+      role: 'contribuyente'
+    };
+
+    const token = this.jwtService.sign(payload, { expiresIn: '15m' });
     const refreshToken = this.jwtService.sign(
       { ...payload, type: 'refresh' },
       { expiresIn: '7d' }
     );
 
+    await this.contribuyenteService.setCurrentRefreshToken(contribuyente.idContribuyente, refreshToken);
 
-  await this.userService.setCurrentRefreshToken(user.idUsuario, refreshToken);//Funcion en el servicio de usuarios que guarda el refresh token en la base de datos
-
-  return { token,refreshToken};
-}
-
-//Validamos el contribuyente y retorna los token y el refresh token
-async loginContribuyente(contribuyente: any) {
-
-  console.log('Generando tokens para contribuyente:', contribuyente); // Verificar el contribuyente recibido
-  const payload = {
-    username: contribuyente.dni,
-    sub: contribuyente.idContribuyente,
-    role: 'contribuyente' // Asignar un rol fijo para contribuyentes
-  };
-
-  const token = this.jwtService.sign(payload, { expiresIn: '15m' });
-
-  const refreshToken = this.jwtService.sign(
-    { ...payload, type: 'refresh' },
-    { expiresIn: '7d' }
-  );
-
-  await this.contribuyenteService.setCurrentRefreshToken(contribuyente.idContribuyente, refreshToken);
-
-  return { token, refreshToken };
-}
-
-
-//Metodo que valida el refresh token y retorna el access token
-async refreshToken(refreshToken: string): Promise<any> {
-  const payload = this.jwtService.verify(refreshToken);
-
-  if (payload.type !== 'refresh') {
-    throw new UnauthorizedException('Invalid token type');
+    return { token, refreshToken };
   }
 
+  // [S-07] Valida el refresh_token y emite un nuevo access_token.
+  // Verifica que el token no fue revocado comparando contra lo guardado en DB.
+  async refreshToken(refreshToken: string): Promise<any> {
+    const payload = this.jwtService.verify(refreshToken);
 
-  const user = await this.userService.findOne(payload.sub);//Buscamos el usuario en la base de datos
-  if (!user || !user.currentHashedRefreshToken) {//Si no existe o no tiene refresh token guardado, lanzamos una excepcion
-    throw new UnauthorizedException('No user found // Invalid refresh token');
-  }
+    if (payload.type !== 'refresh') throw new UnauthorizedException('Invalid token type'); // Evita usar un access_token aquí
 
-  const isRefreshTokenValid = await bcrypt.compare(refreshToken, user.currentHashedRefreshToken);//Comprobamos que el refresh token es valido
-  if (!isRefreshTokenValid) {
-    throw new UnauthorizedException('Invalid refresh token');//Si no es valido lanzamos una excepcion
-  }
-
-  const access_token = this.jwtService.sign(
-  { username: payload.username, sub: payload.sub, role: payload.role },
-  { expiresIn: '15m' }
-);
-
-  return { access_token: access_token };//Retornamos el access token
-}
-
-//Metodo que valida el refresh token para contribuyentes y retorna el access token
-async refreshTokenContribuyente(refreshToken: string): Promise<any> {
-  const payload = this.jwtService.verify(refreshToken);
-
-  if (payload.type !== 'refresh') {
-    throw new UnauthorizedException('Invalid token type');
-  }
-
-  const contribuyente = await this.contribuyenteService.findOne(payload.sub);
-  if (!contribuyente || !contribuyente.currentHashedRefreshToken) {
-    throw new UnauthorizedException('No contribuyente found // Invalid refresh token');
-  }
-
-  const isRefreshTokenValid = await bcrypt.compare(refreshToken, contribuyente.currentHashedRefreshToken);
-  if (!isRefreshTokenValid) {
-    throw new UnauthorizedException('Invalid refresh token');
-  }
-
-  const access_token = this.jwtService.sign(
-    { username: payload.username, sub: payload.sub, role: payload.role },
-    { expiresIn: '15m' }
-  );
-
-  return { access_token: access_token };
-}
-
-
-async createMunicipal(createUserDto: CreateUsuarioMunicipalDto): Promise<UsuarioMunicipal> {
-  // Verificamos si ya existe un usuario con ese nombre
-  const existingUser = await this.userService.findByNameOptional(createUserDto.nombre);
-  if (existingUser) {
-    this.handleDuplicate(
-      existingUser,
-      ConflictException,
-      `User with name ${createUserDto.nombre} already exists`
-    );
-  }
-
-  // Hasheamos la contraseña
-  const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
-
-  // Obtenemos el objeto completo del sector
-  const sector= await this.sectorMunicipalService.findOne(createUserDto.sector);
-
-  // determinamos el rol basado en el sector
-  let assignedRole: RolUser;
-  if (sector.nombre.toUpperCase() === 'MESA_ENTRADA') {
-    assignedRole = RolUser.MESA_ENTRADA;
-  } else {
-    assignedRole = RolUser.REVISOR;
-  }
-
-const { sector: _, ...dtoSinSector } = createUserDto; //excluímos el campo sector del DTO
-
-const newUser = this.userService.create({
-  ...dtoSinSector,
-  password: hashedPassword,
-  idSector: sector.idSector,
-  rol: assignedRole,
-});
-
-  // Guardamos y retornamos
-  return this.userService.save(newUser);
-}
-
-
-async createContribuyente(createContribuyenteDto: CreateContribuyenteDto): Promise<Contribuyente> {
-
-    const existingContribuyente =
-    await this.contribuyenteService.findByDni(createContribuyenteDto.dni);
-
-    if (existingContribuyente) {
-      this.handleDuplicate(
-        existingContribuyente,
-        ConflictException,
-        `Contribuyente with dni ${createContribuyenteDto.dni} already exists`
-      );
+    const user = await this.userService.findOne(payload.sub);
+    if (!user || !user.currentHashedRefreshToken) {
+      throw new UnauthorizedException('No user found // Invalid refresh token');
     }
 
-    // 🔐 password temporal (NUNCA se envía)
-    const tempPassword = randomBytes(8).toString('hex');
-    const hashedPassword = await bcrypt.hash(tempPassword, 10);
+    const isRefreshTokenValid = await bcrypt.compare(refreshToken, user.currentHashedRefreshToken); // Verifica que no fue revocado por logout
+    if (!isRefreshTokenValid) throw new UnauthorizedException('Invalid refresh token');
 
-    // 🔑 token de activación
-    const activationToken = uuidv4();
+    const access_token = this.jwtService.sign(
+      { username: payload.username, sub: payload.sub, role: payload.role },
+      { expiresIn: '15m' }
+    );
+
+    return { access_token };
+  }
+
+  // [S-08] Igual que [S-07] pero busca en la tabla de contribuyentes.
+  async refreshTokenContribuyente(refreshToken: string): Promise<any> {
+    const payload = this.jwtService.verify(refreshToken);
+
+    if (payload.type !== 'refresh') throw new UnauthorizedException('Invalid token type');
+
+    const contribuyente = await this.contribuyenteService.findOne(payload.sub);
+    if (!contribuyente || !contribuyente.currentHashedRefreshToken) {
+      throw new UnauthorizedException('No contribuyente found // Invalid refresh token');
+    }
+
+    const isRefreshTokenValid = await bcrypt.compare(refreshToken, contribuyente.currentHashedRefreshToken);
+    if (!isRefreshTokenValid) throw new UnauthorizedException('Invalid refresh token');
+
+    const access_token = this.jwtService.sign(
+      { username: payload.username, sub: payload.sub, role: payload.role },
+      { expiresIn: '15m' }
+    );
+
+    return { access_token };
+  }
+
+  // [S-01] Crea un usuario municipal. El rol se asigna automáticamente según el sector.
+  async createMunicipal(createUserDto: CreateUsuarioMunicipalDto): Promise<UsuarioMunicipal> {
+    const existingUser = await this.userService.findByNameOptional(createUserDto.nombre);
+    if (existingUser) {
+      this.handleDuplicate(existingUser, ConflictException, `User with name ${createUserDto.nombre} already exists`);
+    }
+
+    const hashedPassword = await bcrypt.hash(createUserDto.password, 10); // Nunca guardamos contraseñas en texto plano
+    const sector = await this.sectorMunicipalService.findOne(createUserDto.sector);
+
+    // El rol se determina por el nombre del sector para que sea automático y no manual
+    let assignedRole: RolUser;
+    if (sector.nombre.toUpperCase() === 'MESA_ENTRADA') {
+      assignedRole = RolUser.MESA_ENTRADA;
+    } else {
+      assignedRole = RolUser.REVISOR;
+    }
+
+    const { sector: _, ...dtoSinSector } = createUserDto; // Excluimos 'sector' porque en la entidad va como idSector
+
+    const newUser = this.userService.create({
+      ...dtoSinSector,
+      password: hashedPassword,
+      idSector: sector.idSector,
+      rol: assignedRole,
+    });
+
+    return this.userService.save(newUser);
+  }
+
+  // [S-02] Crea un contribuyente con cuenta inactiva y envía email de activación.
+  async createContribuyente(createContribuyenteDto: CreateContribuyenteDto): Promise<Contribuyente> {
+    const existingContribuyente = await this.contribuyenteService.findByDni(createContribuyenteDto.dni);
+    if (existingContribuyente) {
+      this.handleDuplicate(existingContribuyente, ConflictException, `Contribuyente with dni ${createContribuyenteDto.dni} already exists`);
+    }
+
+    const tempPassword = randomBytes(8).toString('hex'); // Contraseña temporal que el ciudadano nunca conoce
+    const hashedPassword = await bcrypt.hash(tempPassword, 10);
+    const activationToken = uuidv4(); // Token único para verificar identidad en la activación
 
     const newContribuyente = this.contribuyenteService.create({
       ...createContribuyenteDto,
       password: hashedPassword,
-      activo: false,
+      activo: false, // La cuenta empieza inactiva hasta que el ciudadano active desde el email
       activationToken
     });
 
     await this.contribuyenteService.save(newContribuyente);
 
-    try{
-       await this.mailService.sendMail(
-      createContribuyenteDto.email,
-      'Bienvenido al Sistema Municipal',
-      './mailContribuyente',
-      {
-        nombre: createContribuyenteDto.nombre, // ✅ {{nombre}} en el template
-        activationUrl: `http://localhost:4200/activar?id=${newContribuyente.idContribuyente}&code=${activationToken}`, // ✅ Enlace de activación
-      }
-    );
-
-    }catch(error){
+    try {
+      await this.mailService.sendMail(
+        createContribuyenteDto.email,
+        'Bienvenido al Sistema Municipal',
+        './mailContribuyente',
+        {
+          nombre: createContribuyenteDto.nombre,
+          activationUrl: `http://localhost:4200/activar?id=${newContribuyente.idContribuyente}&code=${activationToken}`,
+        }
+      );
+    } catch (error) {
       console.error('Error al enviar el correo de bienvenida:', error);
+      // No lanzamos el error para no revertir el registro si el mail falla
     }
 
-  
     return newContribuyente;
-
-}
-
-//Se usa internamente en el backend para activar un contribuyente
-async activateContribuyente(dto: ActivateContribuyenteDto): Promise<void> {
-  const { id, code, password } = dto;
-  const contribuyente = await this.contribuyenteService.finOneInactiveByIdAndActivationToken(id, code);
-  
-  if (!contribuyente) {
-    throw new UnauthorizedException('El contribuyente no existe o el token no es válido');
   }
 
-  const hashedPassword = await bcrypt.hash(password, 10);
+  // [S-11] Activa la cuenta del contribuyente. Invalida el token para que el link no se reutilice.
+  async activateContribuyente(dto: ActivateContribuyenteDto): Promise<void> {
+    const { id, code, password } = dto;
+    const contribuyente = await this.contribuyenteService.finOneInactiveByIdAndActivationToken(id, code);
 
-  await this.contribuyenteService.activateContribuyente(contribuyente, hashedPassword);
-}
+    if (!contribuyente) throw new UnauthorizedException('El contribuyente no existe o el token no es válido');
 
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await this.contribuyenteService.activateContribuyente(contribuyente, hashedPassword);
+  }
 
-//LOGOUT DEL USUARIO MUNICIPAL Y DEL CONTRIBUYENTE, AMBOS BORRAN EL REFRESH
-async logout(idUser: number) {
-  await this.userService.removeRefreshToken(idUser);
-}
+  // [S-09] Elimina el refresh_token de la DB al hacer logout del usuario municipal.
+  async logout(idUser: number) {
+    await this.userService.removeRefreshToken(idUser);
+  }
 
-async logoutContribuyente(idContribuyente: number) {
-  await this.contribuyenteService.removeRefreshToken(idContribuyente);
-}
-
+  // [S-10] Igual que [S-09] pero para contribuyentes.
+  async logoutContribuyente(idContribuyente: number) {
+    await this.contribuyenteService.removeRefreshToken(idContribuyente);
+  }
 }

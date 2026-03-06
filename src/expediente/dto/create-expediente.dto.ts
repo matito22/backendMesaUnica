@@ -1,7 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
 import { EstadoExpediente } from 'src/enum/estado-expediente';
 import { CreateDatosCatastralesDto } from 'src/datos-catastrales/dto/create-datos-catastrales.dto';
+import { Type } from 'class-transformer';
 
 
 export class CreateExpedienteDto {
@@ -37,6 +38,8 @@ export class CreateExpedienteDto {
     datosFormulario?: Record<string, any>;
 
     @ApiPropertyOptional({description: 'Datos catastrales opcionales'})
+    @ValidateNested()
+    @Type(() => CreateDatosCatastralesDto)
     datosCatastrales: CreateDatosCatastralesDto;
 
 

@@ -1,4 +1,7 @@
-import { Controller, Get, Post, Body, Delete, HttpStatus, HttpCode, UseGuards, Request, Res, UnauthorizedException, Req, Query } from '@nestjs/common';
+import {
+  Controller, Get, Post, Body, Delete, HttpStatus, HttpCode,
+  UseGuards, Request, Res, UnauthorizedException, Req, Query
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { LocalAuthGuard } from './local-auth-guard';
@@ -15,118 +18,107 @@ import { RolUser } from '../enum/rol-user';
 import { ActivateContribuyenteDto } from './dto/activate-contribuyente.dto';
 import { LoginContribuyenteDto } from './dto/login-contribuyente.dto';
 
-
-
-//En este controlador se encarga de validar el usuario y el token
-//LocalAuthGuard y JwtAuthGuard son guards que se encargan de validar el usuario y el token
-//LocalAuthguard llama al validate de local.strategy.ts , local.strategy.ts valida el usuario con el metodo validateUser de auth.service.ts y retorna el usuario ,guarda el usuario en req.user
-//JwtAuthGuard llama al validate de jwt.strategy.ts , jwt.strategy.ts valida el token con Validate  y retorna el usuario ,guarda el usuario en req.user.Y luego se realiza lo que este dentro de ese controller
+// Punto de entrada HTTP para autenticación: registro, login, logout, refresh y activación de cuenta.
+// LocalAuthGuard valida usuario/password → llama a local.strategy.ts → AuthService.validateUser
+// JwtAuthGuard valida el token JWT en cada request protegido
+// RolesGuard verifica que el usuario tenga el rol requerido
+// @Public() marca una ruta como accesible sin token
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  
-  
-@UseGuards(JwtAuthGuard,RolesGuard)
-//@Public()//PARA CREAR EL PRIMERO USUARIO, SI NO PONEMOS PUBLIC, NO PODEMOS CREAR EL PRIMER USUARIO PORQUE NO TENEMOS TOKEN
-@Roles(RolUser.ADMIN)
-@Post('registrar/municipal')
-create(@Body() createUserDto: CreateUsuarioMunicipalDto) {
+  // [C-01] Registra un usuario municipal. Solo ADMIN puede hacerlo.
+  // Llama a → [S-01] AuthService.createMunicipal
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  // @Public() // ← Descomentar solo para crear el primer ADMIN. Volver a comentar después.
+  @Roles(RolUser.ADMIN)
+  @Post('registrar/municipal')
+  create(@Body() createUserDto: CreateUsuarioMunicipalDto) {
     return this.authService.createMunicipal(createUserDto);
-}
-
-    
-@UseGuards(JwtAuthGuard,RolesGuard)
-@Roles(RolUser.ADMIN,RolUser.MESA_ENTRADA)
-@Post('registrar/contribuyente')
-  createContribuyente(@Body() createContribuyenteDto: CreateContribuyenteDto,) {
-  return this.authService.createContribuyente(createContribuyenteDto);
   }
 
+  // [C-02] Registra un contribuyente. Solo ADMIN o MESA_ENTRADA pueden hacerlo.
+  // Llama a → [S-02] AuthService.createContribuyente
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RolUser.ADMIN, RolUser.MESA_ENTRADA)
+  @Post('registrar/contribuyente')
+  createContribuyente(@Body() createContribuyenteDto: CreateContribuyenteDto) {
+    return this.authService.createContribuyente(createContribuyenteDto);
+  }
 
+  // [C-03] Login de usuario municipal. LocalAuthGuard valida credenciales antes de entrar.
+  // Llama a → [S-03] AuthService.login
+  @UseGuards(LocalAuthGuard)
+  @Public() // Sin token porque el usuario está intentando obtenerlo
+  @ApiBody({ type: LoginDto })
+  @Post('login')
+  async login(@Request() req, @Res({ passthrough: true }) res: Response) {
+    const { token, refreshToken } = await this.authService.login(req.user);
 
+    res.cookie('access_token', token, {
+      httpOnly: true, // No accesible desde JS del navegador (protección XSS)
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 15 * 60 * 1000, // 15 minutos
+      path: '/',
+    });
 
+    res.cookie('refresh_token', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
+      path: '/',
+    });
 
-@UseGuards(LocalAuthGuard)
-@Public()
-@ApiBody({ type: LoginDto })
-@Post('login')
-async login(@Request() req,@Res({ passthrough: true }) res: Response) {
+    res.status(200).json({ ok: true, message: 'Login Successful' });
+  }
 
-  const { token,refreshToken} = await this.authService.login(req.user);//Obtenemos el token y el usuario
+  // [C-04] Login de contribuyente. LocalAuthContribuyenteGuard valida credenciales.
+  // Llama a → [S-05] AuthService.loginContribuyente
+  @UseGuards(LocalAuthContribuyenteGuard)
+  @Public()
+  @ApiBody({ type: LoginContribuyenteDto })
+  @Post('login/contribuyente')
+  async loginContribuyente(@Request() req, @Res({ passthrough: true }) res: Response) {
+    const { token, refreshToken } = await this.authService.loginContribuyente(req.user);
 
-  
+    console.log('Login Contribuyente:', req.user);
 
-  res.cookie('access_token', token, {//Guardamos el token en cookie
-    httpOnly: true,//La cookie solo puede ser accedida por el servidor
-    secure: process.env.NODE_ENV === 'production',//la cookie solo puede ser accedida en https
-    sameSite: 'lax',//La cookie solo puede ser accedida en el mismo dominio
-    maxAge: 15 * 60 * 1000, // Tiene validez de 15 minutos
-    path: '/',
-  });
+    res.cookie('access_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 15 * 60 * 1000,
+      path: '/',
+    });
 
-  res.cookie('refresh_token', refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 7 * 24 * 60 * 60 * 1000, // Tiene validez de 7 dias
-    path: '/',
-  });
+    res.cookie('refresh_token', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: '/',
+    });
 
-  res.status(200)
-  .json({
-    ok: true,
-    message:'Login Successful'
-   });
-  
-}
+    res.status(200).json({ ok: true, message: 'Login Contribuyente Successful' });
+  }
 
-@UseGuards(LocalAuthContribuyenteGuard)
-@Public()
-@ApiBody({ type: LoginContribuyenteDto })
-@Post('login/contribuyente')
-async loginContribuyente(@Request() req, @Res({ passthrough: true }) res: Response) {
-  const { token, refreshToken } = await this.authService.loginContribuyente(req.user);
+  // [C-05] Renueva el access_token usando el refresh_token de la cookie.
+  // @Public() porque el access_token ya expiró cuando se llama esto.
+  // Llama a → [S-07] AuthService.refreshToken
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post('refresh')
+  async refresh(@Req() req, @Res({ passthrough: true }) res: Response) {
+    const refreshToken = req.cookies['refresh_token'];
 
-  console.log('Login Contribuyente:', req.user); // Verificar el usuario logueado
+    if (!refreshToken) throw new UnauthorizedException('No refresh token');
 
-  res.cookie('access_token', token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 15 * 60 * 1000,
-    path: '/',
-  });
+    const { access_token } = await this.authService.refreshToken(refreshToken);
 
-  res.cookie('refresh_token', refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-    path: '/',
-  });
-
-  res.status(200).json({
-    ok: true,
-    message: 'Login Contribuyente Successful'
-  });
-}
-
-//Req representa lo que el cliente envia al servidor: headers, cookies, body, etc, viene cargador con los datos del user que se ha logueado por JWT
-
-//Res es lo que devuelve el servidor, status code,headers,cookies,body
-@Public()//Si no es public, no podes acceder cuando el token ya vencio
-@HttpCode(HttpStatus.OK)
-@Post('refresh')
-async refresh(@Req() req, @Res({ passthrough: true }) res: Response) {
-  const refreshToken = req.cookies['refresh_token'];//Usamos req para leer las cookies que envio el cliente
-
-
-  if (!refreshToken) throw new UnauthorizedException('No refresh token');
-
-  const { access_token } = await this.authService.refreshToken(refreshToken);
-    res.cookie('access_token', access_token, {//
+    res.cookie('access_token', access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -136,63 +128,65 @@ async refresh(@Req() req, @Res({ passthrough: true }) res: Response) {
     return { message: 'Access token refreshed' };
   }
 
-@Public()
-@HttpCode(HttpStatus.OK)
-@Post('refresh/contribuyente')
-async refreshContribuyente(@Req() req, @Res({ passthrough: true }) res: Response) {
-  const refreshToken = req.cookies['refresh_token'];
+  // [C-06] Igual que [C-05] pero para contribuyentes.
+  // Llama a → [S-08] AuthService.refreshTokenContribuyente
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post('refresh/contribuyente')
+  async refreshContribuyente(@Req() req, @Res({ passthrough: true }) res: Response) {
+    const refreshToken = req.cookies['refresh_token'];
 
-  if (!refreshToken) throw new UnauthorizedException('No refresh token');
+    if (!refreshToken) throw new UnauthorizedException('No refresh token');
 
-  const { access_token } = await this.authService.refreshTokenContribuyente(refreshToken);
-  res.cookie('access_token', access_token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 15 * 60 * 1000,
-  });
+    const { access_token } = await this.authService.refreshTokenContribuyente(refreshToken);
 
-  return { message: 'Access token refreshed' };
-}
+    res.cookie('access_token', access_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 15 * 60 * 1000,
+    });
 
+    return { message: 'Access token refreshed' };
+  }
 
+  // [C-07] Cierra sesión del usuario municipal: borra cookies y elimina el refresh_token de la DB.
+  // Llama a → [S-09] AuthService.logout
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  async logout(@Req() req, @Res({ passthrough: true }) res: Response) {
+    res.clearCookie('access_token');
+    res.clearCookie('refresh_token');
+    console.log(req.user);
+    await this.authService.logout(req.user.userId);
+    return { message: 'Logout successful' };
+  }
 
-//Eliminar cookie, no necesita ir en service, controller maneja HTTP 
-@Post('logout')
-@HttpCode(HttpStatus.OK)
-async logout(@Req() req, @Res({ passthrough: true }) res: Response) {
-  res.clearCookie('access_token');//Lo eliminamos del navegador
-  res.clearCookie('refresh_token');//Lo eliminamos del navegador
-  console.log(req.user);
+  // [C-08] Igual que [C-07] pero para contribuyentes.
+  // Llama a → [S-10] AuthService.logoutContribuyente
+  @Post('logout/contribuyente')
+  @HttpCode(HttpStatus.OK)
+  async logoutContribuyente(@Req() req, @Res({ passthrough: true }) res: Response) {
+    res.clearCookie('access_token');
+    res.clearCookie('refresh_token');
+    console.log(req.user);
+    await this.authService.logoutContribuyente(req.user.idContribuyente);
+    return { message: 'Logout contribuyente successful' };
+  }
 
-  await this.authService.logout(req.user.userId);//Eliminamos el refresh token de la base de datos del id que le pasamos
-  return { message: 'Logout successful' };
-}
+  // [C-09] Activa la cuenta del contribuyente con el link recibido por email.
+  // @Public() porque aún no tiene cuenta activa ni token.
+  // Llama a → [S-11] AuthService.activateContribuyente
+  @Public()
+  @Post('activate-contribuyente')
+  async activateContribuyente(@Body() activateContributenteDto: ActivateContribuyenteDto) {
+    return this.authService.activateContribuyente(activateContributenteDto);
+  }
 
-@Post('logout/contribuyente')
-@HttpCode(HttpStatus.OK)
-async logoutContribuyente(@Req() req, @Res({ passthrough: true }) res: Response) {
-  res.clearCookie('access_token');
-  res.clearCookie('refresh_token');
-  console.log(req.user);
-
-  await this.authService.logoutContribuyente(req.user.idContribuyente);
-  return { message: 'Logout contribuyente successful' };
-}
-
-@Public()
-@Post('activate-contribuyente')
-async activateContribuyente(@Body() activateContributenteDto: ActivateContribuyenteDto) {
-  return this.authService.activateContribuyente(activateContributenteDto);
-  
-}
-
-
+  // [C-10] Devuelve el perfil del usuario autenticado (viene en el JWT, no va al servicio).
   @UseGuards(RolesGuard)
   @Get('profile')
   getProfile(@Request() req) {
     return req.user;
   }
-
-
 }

@@ -20,6 +20,7 @@ import { TipoExpedienteModule } from './tipo-expediente/tipo-expediente.module';
 import { RequisitoTipoExpedienteModule } from './requisito-tipo-expediente/requisito-tipo-expediente.module';
 import { MailModule } from './mail/mail.module';
 import { join } from 'path';
+import { DatosCatastralesModule } from './datos-catastrales/datos-catastrales.module';
 
 
 @Module({
@@ -39,7 +40,7 @@ import { join } from 'path';
     ,DocumentoModule
     ,ContribuyenteModule
     ,ExpedienteModule
-    ,MensajeModule, TipoExpedienteModule, RequisitoTipoExpedienteModule, MailModule,
+    ,MensajeModule, TipoExpedienteModule, RequisitoTipoExpedienteModule, MailModule,DatosCatastralesModule
   ],
   controllers: [AppController],
   providers: [AppService,AppConfigService,

@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  ConflictException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateTipoExpedienteDto } from './dto/create-tipo-expediente.dto';
@@ -16,35 +12,19 @@ export class TipoExpedienteService extends HandleService {
   constructor(
     @InjectRepository(TipoExpediente)
     private readonly tipoExpedienteRepository: Repository<TipoExpediente>,
-
     @InjectRepository(SectorMunicipal)
     private readonly sectorRepository: Repository<SectorMunicipal>,
   ) {
     super();
   }
 
-  // ────────────────────────────────
-  // CREAR
-  // ────────────────────────────────
+  // [S-50] Crea un tipo de expediente. Verifica nombre único y que el sector exista.
   async create(dto: CreateTipoExpedienteDto): Promise<TipoExpediente> {
-    const existe = await this.tipoExpedienteRepository.findOne({
-      where: { nombre: dto.nombre },
-    });
+    const existe = await this.tipoExpedienteRepository.findOne({ where: { nombre: dto.nombre } });
+    if (existe) throw new ConflictException(`Ya existe un tipo de expediente con el nombre "${dto.nombre}"`);
 
-    if (existe) {
-      throw new ConflictException(
-        `Ya existe un tipo de expediente con el nombre "${dto.nombre}"`,
-      );
-    }
-
-    // Validar sector
-    const sector = await this.sectorRepository.findOne({
-      where: { idSector: dto.idSectorResponsable },
-    });
-
-    if (!sector) {
-      throw new NotFoundException('El sector responsable no existe');
-    }
+    const sector = await this.sectorRepository.findOne({ where: { idSector: dto.idSectorResponsable } });
+    if (!sector) throw new NotFoundException('El sector responsable no existe');
 
     const nuevo = this.tipoExpedienteRepository.create({
       sectorResponsable: sector,
@@ -54,29 +34,19 @@ export class TipoExpedienteService extends HandleService {
     });
 
     const guardado = await this.tipoExpedienteRepository.save(nuevo);
-
-    return this.findOne(guardado.idTipoExpediente);
+    return this.findOne(guardado.idTipoExpediente); // Devolvemos con relaciones cargadas
   }
 
-  // ────────────────────────────────
-  // OBTENER UNO
-  // ────────────────────────────────
+  // [S-49] Devuelve un tipo de expediente con sus relaciones.
   async findOne(idTipoExpediente: number): Promise<TipoExpediente> {
     const tipo = await this.tipoExpedienteRepository.findOne({
       where: { idTipoExpediente },
-      relations: ['sectorResponsable','schemaformulario']
+      relations: ['sectorResponsable', 'schemaformulario']
     });
-
-    return this.handleException(
-      tipo,
-      NotFoundException,
-      `Tipo de expediente with ID ${idTipoExpediente} not found`,
-    );
+    return this.handleException(tipo, NotFoundException, `Tipo de expediente with ID ${idTipoExpediente} not found`);
   }
 
-  // ────────────────────────────────
-  // LISTAR
-  // ────────────────────────────────
+  // [S-48] Lista tipos de expediente. soloActivos:false para vistas de administración.
   async findAll(soloActivos = true): Promise<TipoExpediente[]> {
     return this.tipoExpedienteRepository.find({
       where: soloActivos ? { activo: true } : {},
@@ -85,100 +55,48 @@ export class TipoExpedienteService extends HandleService {
     });
   }
 
-  // ────────────────────────────────
-  // ACTUALIZAR
-  // ────────────────────────────────
-  async update(
-    id: number,
-    dto: UpdateTipoExpedienteDto,
-  ): Promise<TipoExpediente> {
+  // [S-51] Actualiza el tipo. Verifica nombre único y sector válido solo si cambiaron.
+  async update(id: number, dto: UpdateTipoExpedienteDto): Promise<TipoExpediente> {
     const tipo = await this.tipoExpedienteRepository.findOne({
       where: { idTipoExpediente: id },
       relations: ['sectorResponsable'],
     });
-
-    if (!tipo) {
-      throw new NotFoundException(
-        `Tipo de expediente con id ${id} no encontrado`,
-      );
-    }
+    if (!tipo) throw new NotFoundException(`Tipo de expediente con id ${id} no encontrado`);
 
     if (dto.nombre && dto.nombre !== tipo.nombre) {
-      const colision = await this.tipoExpedienteRepository.findOne({
-        where: { nombre: dto.nombre },
-      });
-      if (colision) {
-        throw new ConflictException(
-          `Ya existe un tipo de expediente con el nombre "${dto.nombre}"`,
-        );
-      }
+      const colision = await this.tipoExpedienteRepository.findOne({ where: { nombre: dto.nombre } });
+      if (colision) throw new ConflictException(`Ya existe un tipo de expediente con el nombre "${dto.nombre}"`);
     }
 
-        if (dto.idSectorResponsable !== undefined) {
-        const sector = await this.sectorRepository.findOne({
-          where: { idSector: dto.idSectorResponsable },
-        });
-
-        if (!sector) {
-          throw new NotFoundException('El sector responsable no existe');
-        }
-
-        tipo.sectorResponsable = sector;
-      }
+    if (dto.idSectorResponsable !== undefined) {
+      const sector = await this.sectorRepository.findOne({ where: { idSector: dto.idSectorResponsable } });
+      if (!sector) throw new NotFoundException('El sector responsable no existe');
+      tipo.sectorResponsable = sector;
+    }
 
     if (dto.nombre !== undefined) tipo.nombre = dto.nombre;
     if (dto.descripcion !== undefined) tipo.descripcion = dto.descripcion;
-    if (dto.schemaFormulario !== undefined)
-      tipo.schemaFormulario = dto.schemaFormulario;
+    if (dto.schemaFormulario !== undefined) tipo.schemaFormulario = dto.schemaFormulario;
     if (dto.activo !== undefined) tipo.activo = dto.activo;
 
     await this.tipoExpedienteRepository.save(tipo);
-
     return this.findOne(id);
   }
 
-  // ────────────────────────────────
-  // BAJA LÓGICA
-  // ────────────────────────────────
+  // [S-52] Baja lógica: activo:false para no romper referencias de expedientes ya creados.
   async deactivate(id: number): Promise<{ mensaje: string }> {
-    const tipo = await this.tipoExpedienteRepository.findOne({
-      where: { idTipoExpediente: id },
-    });
-
-    if (!tipo) {
-      throw new NotFoundException(
-        `Tipo de expediente con id ${id} no encontrado`,
-      );
-    }
-
-    if (!tipo.activo) {
-      throw new ConflictException(
-        `El tipo de expediente con id ${id} ya está inactivo`,
-      );
-    }
-
+    const tipo = await this.tipoExpedienteRepository.findOne({ where: { idTipoExpediente: id } });
+    if (!tipo) throw new NotFoundException(`Tipo de expediente con id ${id} no encontrado`);
+    if (!tipo.activo) throw new ConflictException(`El tipo de expediente con id ${id} ya está inactivo`);
     tipo.activo = false;
     await this.tipoExpedienteRepository.save(tipo);
-
-    return {
-      mensaje: `Tipo de expediente "${tipo.nombre}" desactivado correctamente`,
-    };
+    return { mensaje: `Tipo de expediente "${tipo.nombre}" desactivado correctamente` };
   }
 
-  // ────────────────────────────────
-  // MÉTODO INTERNO
-  // ────────────────────────────────
+  // Busca un tipo activo. Lo usan procesos internos que requieren que el tipo esté vigente.
   async findEntityById(id: number): Promise<TipoExpediente> {
-    const tipo = await this.tipoExpedienteRepository.findOne({
-      where: { idTipoExpediente: id, activo: true },
-    });
-
-    if (!tipo) {
-      throw new NotFoundException(
-        `Tipo de expediente con id ${id} no encontrado o inactivo`,
-      );
-    }
-
+    const tipo = await this.tipoExpedienteRepository.findOne({ where: { idTipoExpediente: id, activo: true } });
+    if (!tipo) throw new NotFoundException(`Tipo de expediente con id ${id} no encontrado o inactivo`);
     return tipo;
   }
 }

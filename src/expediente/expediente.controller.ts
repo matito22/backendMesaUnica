@@ -1,4 +1,7 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, HttpCode, HttpStatus, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller, Get, Post, Body, Patch, Param, Delete,
+  ParseIntPipe, HttpCode, HttpStatus, UseGuards, Request
+} from '@nestjs/common';
 import { ExpedienteService } from './expediente.service';
 import { CreateExpedienteDto } from './dto/create-expediente.dto';
 import { UpdateExpedienteDto } from './dto/update-expediente.dto';
@@ -7,77 +10,84 @@ import { RolUser } from '../enum/rol-user';
 import { RolesGuard } from '../auth/roles.guard';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
-
-// IMPORTANTE: Las rutas con path fijo (/gde, /contribuyente, /hijos)
-// deben ir ANTES de la ruta dinámica (:id) para que NestJS no las
-// confunda e intente parsear "gde" como un id numérico.
+// Las rutas con path fijo (/gde, /contribuyente, /revisor) van ANTES de /:id
+// para que NestJS no intente parsear "gde" o "revisor" como un número.
 
 @Controller('expediente')
 export class ExpedienteController {
   constructor(private readonly expedienteService: ExpedienteService) {}
 
+  // [C-11] Crea un expediente. Internamente también genera los documentos en PENDIENTE_CARGA.
+  // Llama a → [S-12] ExpedienteService.create
   @Post()
   @HttpCode(HttpStatus.CREATED)
   create(@Body() createExpedienteDto: CreateExpedienteDto) {
+    console.log("Llega aca", createExpedienteDto);
     return this.expedienteService.create(createExpedienteDto);
   }
 
+  // [C-12] Devuelve expedientes activos (INICIADO o EN_REVISION).
+  // Llama a → [S-13] ExpedienteService.findAll
   @Get()
   findAll() {
     return this.expedienteService.findAll();
   }
 
-  // Rutas específicas ANTES de /:id para evitar colisiones
+  // [C-13] Busca un expediente por su número GDE.
+  // Llama a → [S-14] ExpedienteService.findByNumeroGde
   @Get('gde/:numeroGde')
   findByNumeroGde(@Param('numeroGde') numeroGde: string) {
     return this.expedienteService.findByNumeroGde(numeroGde);
   }
 
+  // [C-14] Devuelve todos los expedientes de un contribuyente.
+  // Llama a → [S-15] ExpedienteService.findByContribuyente
   @Get('contribuyente/:idContribuyente')
   findByContribuyente(@Param('idContribuyente', ParseIntPipe) idContribuyente: number) {
     return this.expedienteService.findByContribuyente(idContribuyente);
   }
 
-
+  // [C-15] Devuelve los expedientes que le corresponden al sector del revisor logueado.
+  // El idSector se extrae del JWT para que el revisor solo vea los suyos.
+  // Llama a → [S-16] ExpedienteService.findBySectorResponsable
   @Get('revisor')
   @Roles(RolUser.REVISOR)
   @UseGuards(JwtAuthGuard, RolesGuard)
   getByRevisor(@Request() req) {
-  const idSector: number = req.user.idSector;
-  console.log('ID del sector:', idSector);
-  console.log('Rol del usuario:', req.user.role); // ← role, no rol
-  return this.expedienteService.findBySectorResponsable(idSector);
-}
+    const idSector: number = req.user.idSector;
+    console.log('ID del sector:', idSector);
+    console.log('Rol del usuario:', req.user.role);
+    return this.expedienteService.findBySectorResponsable(idSector);
+  }
 
- /* @Get('hijos/:idExpedientePadre')
-  findHijos(@Param('idExpedientePadre', ParseIntPipe) idExpedientePadre: number) {
-    return this.expedienteService.findHijos(idExpedientePadre);
+  // [C-16] Actualiza solo los datos del formulario del expediente (JSON libre).
+  // Ruta separada de PATCH /:id para no pisar otros campos del expediente.
+  // Llama a → [S-17] ExpedienteService.updateFormulario
+  @Patch(':id/formulario')
+  updateFormulario(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() datosFormulario: Record<string, any>,
+  ) {
+    return this.expedienteService.updateFormulario(id, datosFormulario);
+  }
 
-  }*/
-
-
-@Patch(':id/formulario')
-updateFormulario(
-  @Param('id', ParseIntPipe) id: number,
-  @Body() datosFormulario: Record<string, any>,
-) {
-  return this.expedienteService.updateFormulario(id, datosFormulario);
-}
-  
+  // [C-17] Actualiza los campos principales del expediente (estado, etc.).
+  // Llama a → [S-18] ExpedienteService.update
   @Patch(':id')
   update(@Param('id', ParseIntPipe) id: number, @Body() updateExpedienteDto: UpdateExpedienteDto) {
     return this.expedienteService.update(id, updateExpedienteDto);
   }
 
-  
-
+  // [C-18] Devuelve un expediente con todas sus relaciones cargadas (docs, revisores, etc.).
+  // Va después de las rutas fijas para evitar colisiones.
+  // Llama a → [S-19] ExpedienteService.findOne
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.expedienteService.findOne(id);
   }
 
-
-
+  // [C-19] Elimina un expediente.
+  // Llama a → [S-20] ExpedienteService.remove
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.expedienteService.remove(id);

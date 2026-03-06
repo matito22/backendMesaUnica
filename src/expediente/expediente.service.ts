@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { CreateExpedienteDto } from './dto/create-expediente.dto';
 import { UpdateExpedienteDto } from './dto/update-expediente.dto';
-import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { Expediente } from './entities/expediente.entity';
 import { HandleService } from '../utils/handle.service';
 import { EstadoExpediente } from '../enum/estado-expediente';
@@ -22,20 +22,8 @@ export class ExpedienteService extends HandleService {
     @InjectRepository(Expediente)
     private readonly expedienteRepository: Repository<Expediente>,
 
-    @InjectRepository(TipoExpediente)
-    private readonly tipoExpedienteRepository: Repository<TipoExpediente>,
-
-    @InjectRepository(Contribuyente)
-    private readonly contribuyenteRepository: Repository<Contribuyente>
-    ,
-    @InjectRepository(DatosCatastrales)
-    private readonly datosCatastralesRepository: Repository<DatosCatastrales>,
-
-    @InjectRepository(RequisitoTipoExpediente)
-    private readonly requisitoRepository: Repository<RequisitoTipoExpediente>,
-
-    @InjectRepository(Documento)
-    private readonly documentoRepository: Repository<Documento>
+    @InjectDataSource()
+    private readonly dataSource: DataSource,
 
   ) {
     super();
@@ -43,65 +31,94 @@ export class ExpedienteService extends HandleService {
 
 async create(dto: CreateExpedienteDto): Promise<Expediente> {
 
-  const existing = await this.expedienteRepository.findOneBy({ numeroGde: dto.numeroGde });
-  if (existing) throw new ConflictException(`Ya existe un expediente con número GDE ${dto.numeroGde}`);
+  return this.dataSource.transaction(async (manager) => {
+    const expedienteRepository = manager.getRepository(Expediente);
+    const contribuyenteRepository = manager.getRepository(Contribuyente);
+    const tipoExpedienteRepository = manager.getRepository(TipoExpediente);
+    const requisitoRepository = manager.getRepository(RequisitoTipoExpediente);
+    const documentoRepository = manager.getRepository(Documento);
+    const datosCatastralesRepository = manager.getRepository(DatosCatastrales);
 
-  const contribuyente = await this.contribuyenteRepository.findOne({
-    where: { idContribuyente: dto.idContribuyente }
+  
+    const existing = await expedienteRepository.findOneBy({ numeroGde: dto.numeroGde });
+    if (existing) {
+      throw new ConflictException(`Ya existe un expediente con número GDE ${dto.numeroGde}`);
+    }
+
+    // Buscar contribuyente
+    const contribuyente = await contribuyenteRepository.findOne({
+      where: { idContribuyente: dto.idContribuyente },
+    });
+
+    if (!contribuyente) {
+      throw new NotFoundException('El contribuyente no existe');
+    }
+
+    // Buscar tipo de expediente
+    const tipoExpediente = await tipoExpedienteRepository.findOne({
+      where: { idTipoExpediente: dto.idTipoExpediente },
+    });
+
+    if (!tipoExpediente) {
+      throw new NotFoundException('El tipo de expediente no existe');
+    }
+
+    // Buscar expediente padre solo si se envía
+    let expedientePadre: Expediente | null = null;
+
+    if (dto.idExpedientePadre) {
+      expedientePadre = await expedienteRepository.findOne({
+        where: { idExpediente: dto.idExpedientePadre },
+      });
+
+      if (!expedientePadre) {
+        throw new NotFoundException('El expediente padre no existe');
+      }
+    }
+
+    // Crear entidad DatosCatastrales
+    const datosCatastrales = datosCatastralesRepository.create(dto.datosCatastrales);
+
+    // Crear expediente
+    const expediente = expedienteRepository.create({
+      numeroGde: dto.numeroGde,
+      datosFormulario: dto.datosFormulario ?? null,
+      estado: dto.estado ?? EstadoExpediente.INICIADO,
+      contribuyente,
+      tipoExpediente,
+      expedientePadre,
+      datosCatastrales,
+    });
+
+    // Guardar expediente
+    const expedienteGuardado = await expedienteRepository.save(expediente);
+
+    // Buscar requisitos del tipo de expediente
+    const requisitos = await requisitoRepository.find({
+      where: { tipoExpediente: { idTipoExpediente: dto.idTipoExpediente } },
+      relations: ['tipoDocumento'],
+    });
+
+    // Crear documentos pendientes automáticamente
+    if (requisitos.length > 0) {
+        const documentos = requisitos.map((req) =>
+        documentoRepository.create({
+          expediente: expedienteGuardado,
+          tipoDocumento: req.tipoDocumento,
+          estado: EstadoDocumento.PENDIENTE_CARGA,
+          nombreArchivo: '',
+          rutaAlmacenamiento: '',
+        })
+      );
+      await documentoRepository.save(documentos);
+    }
+    return expedienteGuardado;
   });
-  if (!contribuyente) throw new NotFoundException('El contribuyente no existe');
-
-  const tipoExpediente = await this.tipoExpedienteRepository.findOne({
-    where: { idTipoExpediente: dto.idTipoExpediente }
-  });
-  if (!tipoExpediente) throw new NotFoundException('El tipo de expediente no existe');
-
-  const expedientePadre = await this.expedienteRepository.findOne({
-    where: { idExpediente: dto.idExpedientePadre }
-  });
-
-  const expediente = this.expedienteRepository.create({
-    numeroGde: dto.numeroGde,
-    datosFormulario: dto.datosFormulario ?? null,
-    estado: dto.estado ?? EstadoExpediente.INICIADO,
-    contribuyente,
-    tipoExpediente,
-    expedientePadre: expedientePadre || null,
-  });
-
-  if (dto.datosCatastrales) {
-    const datosEntity = this.datosCatastralesRepository.create(dto.datosCatastrales as any);
-    const savedDatos = await this.datosCatastralesRepository.save(datosEntity);
-    (expediente as any).datosCatastrales = savedDatos;
-  }
-
-  const expedienteGuardado = await this.expedienteRepository.save(expediente);
-
-  // ✅ Creamos los documentos automáticamente según los requisitos del tipo
-  const requisitos = await this.requisitoRepository.find({
-    where: { tipoExpediente: { idTipoExpediente: dto.idTipoExpediente } },
-    relations: ['tipoDocumento'],
-  });
-
-  if (requisitos.length > 0) {
-    const documentos = requisitos.map(req =>
-      this.documentoRepository.create({
-        expediente: expedienteGuardado,
-        tipoDocumento: req.tipoDocumento,
-        estado: EstadoDocumento.PENDIENTE_CARGA,
-        nombreArchivo: '',
-        rutaAlmacenamiento: '',
-      })
-    );
-    await this.documentoRepository.save(documentos);
-  }
-
-  return expedienteGuardado;
 }
 
+//FILTROS PARA DEVOLVER EXPEDIENTES
 
   findAll(): Promise<Expediente[]> {
-    // FIX: la relación se llama 'contribuyente', no 'idContribuyente' (corregido en la entidad)
     return this.expedienteRepository.find({
       relations: ['contribuyente', 'tipoExpediente', 'expedientePadre'],
       where: [
@@ -137,7 +154,7 @@ async create(dto: CreateExpedienteDto): Promise<Expediente> {
   async findByNumeroGde(numeroGde: string): Promise<Expediente> {
     const expediente = await this.expedienteRepository.findOne({
       where: { numeroGde },
-      relations: ['contribuyente', 'tipoExpediente', 'expedientePadre'], // FIX: nombres correctos
+      relations: ['contribuyente', 'tipoExpediente', 'expedientePadre'],
     });
     return this.handleException(
       expediente,
@@ -153,7 +170,7 @@ async findByContribuyente(idContribuyente: number): Promise<Expediente[]> {
         idContribuyente: idContribuyente,
       },
     },
-    relations: ['tipoExpediente', 'expedientePadre'], // FIX: nombres correctos
+    relations: ['tipoExpediente', 'expedientePadre'], 
     order: { fechaCreacion: 'DESC' },
   });
 }
@@ -170,12 +187,13 @@ async findBySectorResponsable(idSector: number): Promise<Expediente[]> {
       },
     },
     relations: ['tipoExpediente', 'contribuyente', 'documentos', 'datosCatastrales'],
+    order: { fechaCreacion: 'DESC' },
   });
 }
 
 
   // Devuelve todos los sub-expedientes vinculados a un expediente padre
-    async findHijos(idExpedientePadre: number): Promise<Expediente[]> {
+   /* async findHijos(idExpedientePadre: number): Promise<Expediente[]> {
       return this.expedienteRepository.find({
         where: {
           expedientePadre: {
@@ -185,7 +203,7 @@ async findBySectorResponsable(idSector: number): Promise<Expediente[]> {
         relations: ['tipoExpediente', 'expedientePadre'],
         order: { fechaCreacion: 'DESC' },
       });
-    }
+    }*/
 
 
   async update(id: number, updateExpedienteDto: UpdateExpedienteDto): Promise<Expediente> {

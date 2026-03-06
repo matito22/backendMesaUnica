@@ -14,7 +14,7 @@ const MIME_TYPES_PERMITIDOS = [
   'image/jpeg',
   'image/png',
   'image/webp',
-  // AutoCAD DWG — distintos OS envían distintos MIME types para el mismo formato
+
   'application/acad',
   'application/x-acad',
   'application/autocad_dwg',
@@ -22,20 +22,20 @@ const MIME_TYPES_PERMITIDOS = [
   'application/x-dwg',
   'image/vnd.dwg',
   'drawing/dwg',
-  // AutoCAD DXF
+  // AutoCAD DXF — distintos OS envían distintos MIME types para el mismo formato
   'application/dxf',
   'application/x-dxf',
   'image/vnd.dxf',
 ];
 
-// Extensiones que se aceptan como fallback (cuando el MIME viene como octet-stream)
+
 const EXTENSIONES_PERMITIDAS = [
   '.pdf', '.doc', '.docx',
   '.jpg', '.jpeg', '.png', '.webp',
   '.dwg', '.dxf',
 ];
 
-export const MAX_TAMANIO_BYTES = 50 * 1024 * 1024; // 50 MB (AutoCAD puede ser grande)
+export const MAX_TAMANIO_BYTES = 50 * 1024 * 1024; 
 
 export const multerConfig = {
   storage: diskStorage({

@@ -37,8 +37,7 @@ export class CreateExpedienteDto {
     datosFormulario?: Record<string, any>;
 
     @ApiPropertyOptional({description: 'Datos catastrales opcionales'})
-    @IsOptional()
-    datosCatastrales?: CreateDatosCatastralesDto;
+    datosCatastrales: CreateDatosCatastralesDto;
 
 
 

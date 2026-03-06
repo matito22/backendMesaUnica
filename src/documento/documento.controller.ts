@@ -51,7 +51,7 @@ export class DocumentoController {
   ) {
     const rutaAbsoluta = await this.documentoService.obtenerRutaParaDescarga(id);
   
-    // sendFile maneja automáticamente Content-Type y Content-Disposition
+
     res.sendFile(rutaAbsoluta);
   }
 

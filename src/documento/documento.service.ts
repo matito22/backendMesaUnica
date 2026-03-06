@@ -36,7 +36,6 @@ export class DocumentoService {
   //SUBIMOS UN ARCHIVO O REEMPLAZAMOS UN EXISTENTE EN CASO DE QUE CUMPLA EL CRITERIO DE VALIDACION
 async subirArchivo(dto: SubirDocumentoDto, file: Express.Multer.File): Promise<Documento> {
 
-  //VALIDAMOS QUE EXISTA EL EXPEDIENTE
   const expediente = await this.expedienteRepository.findOne({
     where: { idExpediente: dto.idExpediente },
   });
@@ -80,12 +79,12 @@ async subirArchivo(dto: SubirDocumentoDto, file: Express.Multer.File): Promise<D
     existente.pesoKb             = Math.ceil(file.size / 1024);
     existente.estado             = EstadoDocumento.CARGADO;
     existente.fechaUltimaCarga   = new Date();
-    existente.observacionActual  = null; // ✅ ver fix en entidad abajo
+    existente.observacionActual  = null; 
 
     return this.documentoRepository.save(existente);
   }
 
-  // ✅ expediente y tipoDocumento ya están definidas arriba
+  // expediente y tipoDocumento ya están definidas arriba
   const nuevo = this.documentoRepository.create({
     nombreArchivo: file.originalname,
     rutaAlmacenamiento: file.path,
@@ -102,7 +101,6 @@ async subirArchivo(dto: SubirDocumentoDto, file: Express.Multer.File): Promise<D
 
 
   // ─── Revisión ────────────────────────────────────────────────────────────────
-// Estado al revisar
 // documento.service.ts
 async revisarDocumento(idDocumento: number, dto: RevisarDocumentoDto, idUsuario: number): Promise<Documento> {
 
@@ -113,12 +111,12 @@ async revisarDocumento(idDocumento: number, dto: RevisarDocumentoDto, idUsuario:
 
   const estadoAnterior = documento.estado;
 
-    // ✅ usuarioRevisor es relación, no columna plana
+    // usuarioRevisor es relación, no columna plana
   const usuarioRevisor = await this.usuarioRepository.findOne({
     where: { idUsuario }
   });
 
-  // Actualizás el documento
+  //Se actualiza el documento
   documento.estado = dto.estado;
   documento.observacionActual = dto.observacion ?? null;
   documento.fechaRevision = new Date();
@@ -126,7 +124,7 @@ async revisarDocumento(idDocumento: number, dto: RevisarDocumentoDto, idUsuario:
 
   await this.documentoRepository.save(documento);
 
-  // ✅ Guardás el historial
+  //Guardamos los cambios de la revision en el historial de documentos
   const historial = this.historialRepository.create({
     idDocumento: documento.idDocumento,
     estadoAnterior,
@@ -138,24 +136,22 @@ async revisarDocumento(idDocumento: number, dto: RevisarDocumentoDto, idUsuario:
 
   return documento;
 }
-  // ─── Descarga ────────────────────────────────────────────────────────────────
 
+  // ─── Descarga ────────────────────────────────────────────────────────────────
   async obtenerRutaParaDescarga(idDocumento: number): Promise<string> {
     const documento = await this.documentoRepository.findOne({
       where: { idDocumento },
     });
-
     if (!documento) throw new NotFoundException('Documento no encontrado');
 
+    //Se valida que exista la ruta de almacenamiento y tambien que exista el documento fisico en donde los guardamos. Ya que el archivo puede haber sido eliminado
     if (!documento.rutaAlmacenamiento || !existsSync(documento.rutaAlmacenamiento)) {
       throw new NotFoundException('El archivo físico no existe en el servidor');
     }
-
     return documento.rutaAlmacenamiento;
   }
 
   // ─── Consulta ────────────────────────────────────────────────────────────────
-
   async findByExpediente(idExpediente: number): Promise<Documento[]> {
     return this.documentoRepository.find({
       where: { expediente: { idExpediente } },
@@ -181,15 +177,13 @@ async revisarDocumento(idDocumento: number, dto: RevisarDocumentoDto, idUsuario:
     await this.documentoRepository.remove(documento);
   }
 
-  // ─── Helpers privados ────────────────────────────────────────────────────────
-
   private async eliminarArchivoDisco(ruta: string | null): Promise<void> {
     //Verificamos si existe el archivo antes de intentar eliminarlo para evitar errores
     if (ruta && existsSync(ruta)) {
       try {
+        //Eliminamos el archivo
         await unlink(ruta);
       } catch {
-        // No lanzar error si el archivo ya no existe; solo loguear
         console.warn(`No se pudo eliminar el archivo: ${ruta}`);
       }
     }

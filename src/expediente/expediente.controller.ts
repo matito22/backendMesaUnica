@@ -49,19 +49,12 @@ export class ExpedienteController {
   return this.expedienteService.findBySectorResponsable(idSector);
 }
 
-  @Get('hijos/:idExpedientePadre')
+ /* @Get('hijos/:idExpedientePadre')
   findHijos(@Param('idExpedientePadre', ParseIntPipe) idExpedientePadre: number) {
     return this.expedienteService.findHijos(idExpedientePadre);
 
-  }
+  }*/
 
-/*@Patch(':id/formulario')
-updateFormulario(
-  @Param('id', ParseIntPipe) id: number,
-  @Body() datosFormulario: any,
-) {
-  return this.expedienteService.updateFormulario(id, datosFormulario);
-}*/
 
 @Patch(':id/formulario')
 updateFormulario(
@@ -77,7 +70,7 @@ updateFormulario(
   }
 
   
-  // Ruta dinámica por id — siempre al final
+
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.expedienteService.findOne(id);

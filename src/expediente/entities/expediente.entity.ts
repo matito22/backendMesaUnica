@@ -47,7 +47,7 @@ export class Expediente {
     @OneToMany(() => Documento, (documento) => documento.expediente)
     documentos: Documento[];
 
-    @OneToOne(() => DatosCatastrales, { cascade: true, nullable: true, eager: true })
+    @OneToOne(() => DatosCatastrales, { cascade: true, eager: true })
     @JoinColumn({ name: 'id_datos_catastrales' })
     datosCatastrales: DatosCatastrales | null;
 }

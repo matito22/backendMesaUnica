@@ -137,7 +137,7 @@ export class ExpedienteService extends HandleService {
   async findByContribuyente(idContribuyente: number): Promise<Expediente[]> {
     return this.expedienteRepository.find({
       where: { contribuyente: { idContribuyente } },
-      relations: ['tipoExpediente', 'expedientePadre'],
+      relations: ['tipoExpediente', 'expedientePadre', 'contribuyente'],
       order: { fechaCreacion: 'DESC' },
     });
   }

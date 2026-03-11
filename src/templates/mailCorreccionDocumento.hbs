@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Solicitud de corrección</title>
+  <style>
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background-color: #f4f6f8;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 40px auto;
+      background-color: #ffffff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .header {
+      background-color: #0d6efd; /* color azul consistente con otras plantillas */
+      color: #ffffff;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .content {
+      padding: 30px;
+      color: #333333;
+      line-height: 1.6;
+    }
+
+    .footer {
+      background-color: #f0f0f0;
+      padding: 15px;
+      text-align: center;
+      font-size: 12px;
+      color: #777777;
+    }
+
+    .highlight {
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Corrección solicitada</h1>
+    </div>
+    <div class="content">
+      <p>Estimado/a {{nombre}},</p>
+
+      <p>Se ha solicitado una corrección en el expediente <strong>{{expedienteNumero}}</strong>.</p>
+      <p>Documento: <strong>{{documentoNombre}}</strong></p>
+
+      {{#if observacion}}
+      <p><strong>Observación:</strong> {{observacion}}</p>
+      {{/if}}
+
+      <p>Por favor ingrese al sistema para revisar el expediente y volver a cargar el documento correspondiente.</p>
+
+      <p>Saludos cordiales,<br />
+      <span class="highlight">Sistema de Gestión Municipal</span></p>
+    </div>
+    <div class="footer">
+      <p>Este mensaje se generó automáticamente, por favor no responda a este correo.</p>
+    </div>
+  </div>
+</body>
+</html>

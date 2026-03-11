@@ -84,7 +84,6 @@ export class AuthController {
   async loginContribuyente(@Request() req, @Res({ passthrough: true }) res: Response) {
     const { token, refreshToken } = await this.authService.loginContribuyente(req.user);
 
-    console.log('Login Contribuyente:', req.user);
 
     res.cookie('access_token', token, {
       httpOnly: true,

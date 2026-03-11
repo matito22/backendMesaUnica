@@ -6,6 +6,7 @@ import { join } from 'path';
 import { MailService } from './mail.service';
 import { MailController } from './mail.controller';
 import { ContribuyenteModule } from '../contribuyente/contribuyente.module';
+import { ExpedienteModule } from 'src/expediente/expediente.module';
 
 @Module({
     imports: [
@@ -35,6 +36,7 @@ import { ContribuyenteModule } from '../contribuyente/contribuyente.module';
             inject: [ConfigService],
         }),
         ContribuyenteModule,
+        ExpedienteModule
     ],
   providers: [MailService],
   exports: [MailService],

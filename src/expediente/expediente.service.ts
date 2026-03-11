@@ -94,15 +94,21 @@ export class ExpedienteService extends HandleService {
   }
 
   // [S-13] Solo devuelve expedientes activos (INICIADO o EN_REVISION) para no saturar la vista.
-  findAll(): Promise<Expediente[]> {
-    return this.expedienteRepository.find({
+ async  findAll({page,limit}:{page:number,limit:number}): Promise<{ data: Expediente[]; total: number }> {
+    //El skip es el que marca desde donde tiene que empezar a mostrar
+     const skip = (page-1)*limit;
+    const [data, total] = await this.expedienteRepository.findAndCount({
       relations: ['contribuyente', 'tipoExpediente', 'expedientePadre'],
       where: [
         { estado: EstadoExpediente.INICIADO },
         { estado: EstadoExpediente.EN_REVISION }
       ],
+      take: limit,
+      skip: skip,
       order: { fechaCreacion: 'DESC' }
     });
+
+    return { data, total };
   }
 
   // [S-19] Carga el expediente con todas sus relaciones para la vista de detalle.
@@ -134,24 +140,29 @@ export class ExpedienteService extends HandleService {
   }
 
   // [S-15] Devuelve todos los trámites del ciudadano.
-  async findByContribuyente(idContribuyente: number): Promise<Expediente[]> {
-    return this.expedienteRepository.find({
-      where: { contribuyente: { idContribuyente } },
-      relations: ['tipoExpediente', 'expedientePadre', 'contribuyente'],
-      order: { fechaCreacion: 'DESC' },
-    });
-  }
+    async findByContribuyente(idContribuyente: number,{ page, limit }: { page: number; limit: number }): Promise<{ data: Expediente[]; total: number }> {
+      const [data, total] = await this.expedienteRepository.findAndCount({
+        where: { contribuyente: { idContribuyente } },
+        relations: ['tipoExpediente', 'expedientePadre', 'contribuyente'],
+        take: limit,
+        skip: (page - 1) * limit,
+        order: { fechaCreacion: 'DESC' },
+      });
+      return { data, total };
+    }
 
   // [S-16] Filtra los expedientes por el sector que los debe revisar.
-  async findBySectorResponsable(idSector: number): Promise<Expediente[]> {
+  async findBySectorResponsable(idSector: number,{ page, limit }: { page: number; limit: number }): Promise<{ data: Expediente[]; total: number }> {
     console.log('ID del sector:', idSector);
-    return this.expedienteRepository.find({
+    const [data, total] = await this.expedienteRepository.findAndCount({
       where: {
         tipoExpediente: { sectorResponsable: { idSector } },
       },
       relations: ['tipoExpediente', 'contribuyente', 'documentos', 'datosCatastrales'],
       order: { fechaCreacion: 'DESC' },
     });
+
+    return { data, total };
   }
 
   // [S-18] Actualiza los campos del expediente. Verifica duplicado de GDE solo si cambió.

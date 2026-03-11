@@ -2,7 +2,8 @@ import { Controller, Post, Body } from '@nestjs/common';
 import { MailDto } from './dto/mail.dto';
 import { ResendMailDto } from './dto/resend-mail.dto';
 import { MailService } from './mail.service';
-import { Public } from 'src/auth/public-key';
+import { CorreccionDocumentoDto } from './dto/correccion-documento.dto';
+
 
 @Controller('mail')
 export class MailController {
@@ -32,4 +33,15 @@ export class MailController {
       resendMailDto.subject,
     );
   }
+
+   @Post('correccion-documento')
+   async correccionDocumento(
+     @Body() correccionDocumentoDto: CorreccionDocumentoDto,
+   ): Promise<{ message: string; email: string }> {
+     // la observación y el expediente van al servicio
+     return await this.mailService.correccionDocumento(
+       correccionDocumentoDto.idExpediente,
+       correccionDocumentoDto.observacion || null,
+     );
+   }
 }

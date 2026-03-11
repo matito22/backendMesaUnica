@@ -1,6 +1,7 @@
 import {
   Controller, Get, Post, Body, Patch, Param, Delete,
-  ParseIntPipe, HttpCode, HttpStatus, UseGuards, Request
+  ParseIntPipe, HttpCode, HttpStatus, UseGuards, Request,
+  Query
 } from '@nestjs/common';
 import { ExpedienteService } from './expediente.service';
 import { CreateExpedienteDto } from './dto/create-expediente.dto';
@@ -29,8 +30,9 @@ export class ExpedienteController {
   // [C-12] Devuelve expedientes activos (INICIADO o EN_REVISION).
   // Llama a → [S-13] ExpedienteService.findAll
   @Get()
-  findAll() {
-    return this.expedienteService.findAll();
+  findAll(@Query('page') page=1,@Query('limit') limit=10) {
+    console.log("Se llama a findall");
+    return this.expedienteService.findAll({page,limit});
   }
 
   // [C-13] Busca un expediente por su número GDE.
@@ -43,8 +45,8 @@ export class ExpedienteController {
   // [C-14] Devuelve todos los expedientes de un contribuyente.
   // Llama a → [S-15] ExpedienteService.findByContribuyente
   @Get('contribuyente/:idContribuyente')
-  findByContribuyente(@Param('idContribuyente', ParseIntPipe) idContribuyente: number) {
-    return this.expedienteService.findByContribuyente(idContribuyente);
+  findByContribuyente(@Param('idContribuyente', ParseIntPipe) idContribuyente: number,@Query('page') page=1,@Query('limit') limit=10) {
+    return this.expedienteService.findByContribuyente(idContribuyente,{page,limit});
   }
 
   // [C-15] Devuelve los expedientes que le corresponden al sector del revisor logueado.
@@ -53,11 +55,11 @@ export class ExpedienteController {
   @Get('revisor')
   @Roles(RolUser.REVISOR)
   @UseGuards(JwtAuthGuard, RolesGuard)
-  getByRevisor(@Request() req) {
+  getByRevisor(@Request() req,@Query('page') page=1,@Query('limit') limit=10) {
     const idSector: number = req.user.idSector;
     console.log('ID del sector:', idSector);
     console.log('Rol del usuario:', req.user.role);
-    return this.expedienteService.findBySectorResponsable(idSector);
+    return this.expedienteService.findBySectorResponsable(idSector,{page,limit});
   }
 
   // [C-16] Actualiza solo los datos del formulario del expediente (JSON libre).

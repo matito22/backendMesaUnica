@@ -47,15 +47,13 @@ export class AuthService extends HandleService {
 
   // [S-06] Igual que [S-04] pero para contribuyentes. Verifica además que esté activo.
   async validateContribuyente(dni: string, pass: string): Promise<any> {
-    console.log('Buscando contribuyente con dni:', dni);
+  
     const contribuyente = await this.contribuyenteService.findByDni(dni);
-    console.log('Contribuyente encontrado:', contribuyente);
 
     if (!contribuyente) { console.log('No existe el contribuyente'); return null; }
     if (!contribuyente.activo) { console.log('Contribuyente no está activo'); return null; } // Solo puede loguear si activó la cuenta
 
     const isMatch = await bcrypt.compare(pass, contribuyente.password);
-    console.log('Password coincide:', isMatch);
 
     if (!isMatch) return null;
 

@@ -2,12 +2,14 @@ import { MailerService } from '@nestjs-modules/mailer';
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { ContribuyenteService } from '../contribuyente/contribuyente.service';
 import { v4 as uuidv4 } from 'uuid';
+import { ExpedienteService } from '../expediente/expediente.service';
 
 @Injectable()
 export class MailService {
   constructor(
     private readonly mailService: MailerService,
     private readonly contribuyenteService: ContribuyenteService,
+    private readonly expedienteService: ExpedienteService,
   ) {}
 
   // [S-41] Envía cualquier email usando las plantillas .hbs de /src/templates/.
@@ -42,10 +44,56 @@ export class MailService {
       await this.contribuyenteService.save(contribuyente);
     }
 
-    const activationUrl = `http://localhost:4200/activar?id=${contribuyente.idContribuyente}&code=${contribuyente.activationToken}`;
+    const activationUrl = `${process.env.CORS_ORIGIN}/activar?id=${contribuyente.idContribuyente}&code=${contribuyente.activationToken}`;
 
     await this.sendMail(emailToUse, subject, template, { nombre: contribuyente.nombre, activationUrl });
 
     return { message: 'Email reenviado correctamente', email: emailToUse };
+  }
+
+
+  async correccionDocumento(
+    idExpediente: number,
+    observacion: string | null = null,
+  ): Promise<{ message: string; email: string }> {
+    // obtenemos el expediente con todos sus documentos
+    const expediente = await this.expedienteService.findOne(idExpediente);
+    if (!expediente) throw new NotFoundException(`Expediente with ID ${idExpediente} not found`);
+
+    // buscamos el documento más recientemente modificado (el que se acaba de justamente revisar)
+    const documento = expediente.documentos?.sort(
+      (a, b) => new Date(b.fechaRevision || 0).getTime() - new Date(a.fechaRevision || 0).getTime(),
+    )?.[0];
+
+    if (!documento) throw new NotFoundException(`No hay documentos en el expediente ${idExpediente}`);
+
+    const contribuyente = expediente.contribuyente;
+    if (!contribuyente) throw new NotFoundException(`Contribuyente for expediente ${idExpediente} not found`);
+
+    const emailToUse = contribuyente.email;
+    if (!emailToUse)
+      throw new BadRequestException(
+        'El contribuyente no tiene un email registrado y no se proporcionó uno nuevo',
+      );
+
+    // preparamos contexto de la plantilla
+    const context: any = {
+      nombre: contribuyente.nombre,
+      expedienteNumero: expediente.numeroGde || `#${expediente.idExpediente}`,
+      documentoNombre:
+        documento.nombreArchivo || documento.tipoDocumento?.nombre || `ID ${documento.idDocumento}`,
+    };
+    if (observacion) {
+      context.observacion = observacion;
+    }
+
+    await this.sendMail(
+      emailToUse,
+      'Corrección de documento',
+      './mailCorreccionDocumento',
+      context,
+    );
+
+    return { message: 'Email enviado correctamente', email: emailToUse };
   }
 }

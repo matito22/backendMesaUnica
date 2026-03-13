@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, Query } from '@nestjs/common';
 import { UsuarioMunicipalService } from './usuario-municipal.service';
 import { CreateUsuarioMunicipalDto } from './dto/create-usuario-municipal.dto';
 import { UpdateUsuarioMunicipalDto } from './dto/update-usuario-municipal.dto';
+import { UsuarioMunicipal } from './entities/usuario-municipal.entity';
 
 // El REGISTRO de usuarios municipales se hace desde AuthController [C-01], no desde acá.
 
@@ -9,12 +10,25 @@ import { UpdateUsuarioMunicipalDto } from './dto/update-usuario-municipal.dto';
 export class UsuarioMunicipalController {
   constructor(private readonly usuarioMunicipalService: UsuarioMunicipalService) {}
 
+  @Get('email/:email')
+  getUsuarioByEmail(@Param('email') email: string): Promise<UsuarioMunicipal | null> {
+    return this.usuarioMunicipalService.findByEmail(email);
+    }
+
+    
+  @Get('nombre/:nombre')
+  getUsuarioByName(@Param('nombre') nombre: string): Promise<UsuarioMunicipal | null> {
+    return this.usuarioMunicipalService.findByName(nombre);
+  }
+
   // [C-31] Devuelve todos los usuarios municipales.
   // Llama a → [S-32] UsuarioMunicipalService.findAll
   @Get()
   findAll() {
     return this.usuarioMunicipalService.findAll();
   }
+
+ 
 
   // [C-32] Devuelve un usuario municipal por id.
   // Llama a → [S-33] UsuarioMunicipalService.findOne
@@ -27,6 +41,7 @@ export class UsuarioMunicipalController {
   // Llama a → [S-34] UsuarioMunicipalService.update
   @Patch(':id')
   update(@Param('id', ParseIntPipe) id: number, @Body() updateUsuarioMunicipalDto: UpdateUsuarioMunicipalDto) {
+
     return this.usuarioMunicipalService.update(+id, updateUsuarioMunicipalDto);
   }
 

@@ -10,21 +10,12 @@ export class CreateUsuarioMunicipalDto {
     @IsNotEmpty()
     nombre: string;
 
-    @ApiProperty({ example: 'password'})
-    @IsString()
-    @IsNotEmpty()
-    @MinLength(6)
-    password: string;
-
+ 
     @ApiProperty({ example: 'matiasagustin@gmail.com' })
     @IsString()
     @IsNotEmpty()
     email: string;
 
-
-    @ApiProperty({ example: true })
-    @IsBoolean()
-    activo: boolean;
 
     // el rol se asigna automáticamente en el servicio según el sector;
     // el cliente no debe confiar en este valor

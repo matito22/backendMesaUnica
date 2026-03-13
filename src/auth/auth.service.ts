@@ -17,6 +17,7 @@ import { randomBytes } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { MailService } from 'src/mail/mail.service';
 import { ActivateContribuyenteDto } from './dto/activate-contribuyente.dto';
+import { ActivateUsuarioDto } from './dto/activate-usuario.dto';
 
 @Injectable()
 export class AuthService extends HandleService {
@@ -154,12 +155,21 @@ export class AuthService extends HandleService {
       this.handleDuplicate(existingUser, ConflictException, `User with name ${createUserDto.nombre} already exists`);
     }
 
-    const hashedPassword = await bcrypt.hash(createUserDto.password, 10); // Nunca guardamos contraseñas en texto plano
-    const sector = await this.sectorMunicipalService.findOne(createUserDto.sector);
+    const tempPassword = randomBytes(8).toString('hex'); // Contraseña temporal que el ciudadano nunca conoce
+    const hashedPassword = await bcrypt.hash(tempPassword, 10);
+    const activationToken = uuidv4(); // Token único para verificar identidad en la activación
 
-    // El rol se determina por el nombre del sector para que sea automático y no manual
+    const sector = await this.sectorMunicipalService.findOne(createUserDto.sector);
+    if (!sector) {
+      throw new NotFoundException('No se indico a que sector pertenece el usuario');
+    }
+
+    const sectorNameUpperCase = sector.nombre.toUpperCase();
     let assignedRole: RolUser;
-    if (sector.nombre.toUpperCase() === 'MESA_ENTRADA') {
+
+    if (sectorNameUpperCase === 'INFORMATICA') {
+      assignedRole = RolUser.ADMIN;
+    } else if (sectorNameUpperCase === 'MESA DE ENTRADA') {
       assignedRole = RolUser.MESA_ENTRADA;
     } else {
       assignedRole = RolUser.REVISOR;
@@ -171,10 +181,29 @@ export class AuthService extends HandleService {
       ...dtoSinSector,
       password: hashedPassword,
       idSector: sector.idSector,
+      activo:false,
       rol: assignedRole,
+      activationToken,
     });
 
-    return this.userService.save(newUser);
+    await  this.userService.save(newUser);
+
+    try {
+      await this.mailService.sendMail(
+        createUserDto.email,
+        'Bienvenido al Sistema Municipal',
+        './mailUsuarioMunicipal',
+        {
+          nombre: createUserDto.nombre,
+          activationUrl: `${process.env.CORS_ORIGIN}/activar?id=${newUser.idUsuario}&code=${activationToken}&type=usuario-municipal`,
+        }
+      );
+    } catch (error) {
+      console.error('Error al enviar el correo de activación:', error);
+      // No lanzamos el error para no revertir el registro si el mail falla
+    }
+
+    return newUser;
   }
 
   // [S-02] Crea un contribuyente con cuenta inactiva y envía email de activación.
@@ -204,7 +233,7 @@ export class AuthService extends HandleService {
         './mailContribuyente',
         {
           nombre: createContribuyenteDto.nombre,
-          activationUrl: `http://localhost:4200/activar?id=${newContribuyente.idContribuyente}&code=${activationToken}`,
+          activationUrl: `${process.env.CORS_ORIGIN}/activar?id=${newContribuyente.idContribuyente}&code=${activationToken}&type=contribuyente`,
         }
       );
     } catch (error) {
@@ -224,6 +253,18 @@ export class AuthService extends HandleService {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     await this.contribuyenteService.activateContribuyente(contribuyente, hashedPassword);
+  }
+
+
+  // [S-12] Activa la cuenta del usuario. Invalida el token para que el link no se reutilice.
+  async activateUsuario(dto: ActivateUsuarioDto): Promise<void> {
+    const { id, code, password } = dto;
+    const usuario = await this.userService.finOneInactiveByIdAndActivationToken(id, code);
+
+    if (!usuario) throw new UnauthorizedException('El usuario no existe o el token no es válido');
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await this.userService.activateUsuario(usuario, hashedPassword);
   }
 
   // [S-09] Elimina el refresh_token de la DB al hacer logout del usuario municipal.

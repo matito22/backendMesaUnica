@@ -36,4 +36,6 @@ export class UsuarioMunicipal {
     @Column({ name:"current_hashed_refresh_token",type: 'varchar', length: 500, nullable: true })
     currentHashedRefreshToken: string | null;
 
+    @Column({ name: 'activation_token', type: 'varchar', length: 255, nullable: true })
+    activationToken: string | null;
 }

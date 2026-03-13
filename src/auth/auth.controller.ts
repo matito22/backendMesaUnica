@@ -17,6 +17,7 @@ import { CreateContribuyenteDto } from '../contribuyente/dto/create-contribuyent
 import { RolUser } from '../enum/rol-user';
 import { ActivateContribuyenteDto } from './dto/activate-contribuyente.dto';
 import { LoginContribuyenteDto } from './dto/login-contribuyente.dto';
+import { ActivateUsuarioDto } from './dto/activate-usuario.dto';
 
 // Punto de entrada HTTP para autenticación: registro, login, logout, refresh y activación de cuenta.
 // LocalAuthGuard valida usuario/password → llama a local.strategy.ts → AuthService.validateUser
@@ -180,6 +181,12 @@ export class AuthController {
   @Post('activate-contribuyente')
   async activateContribuyente(@Body() activateContributenteDto: ActivateContribuyenteDto) {
     return this.authService.activateContribuyente(activateContributenteDto);
+  }
+
+  @Public()
+  @Post('activate-usuario')
+  async activateUsuario(@Body() activateUsuarioDto: ActivateUsuarioDto) {
+    return this.authService.activateUsuario(activateUsuarioDto);
   }
 
   // [C-10] Devuelve el perfil del usuario autenticado (viene en el JWT, no va al servicio).

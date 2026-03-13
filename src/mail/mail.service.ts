@@ -52,6 +52,8 @@ export class MailService {
   }
 
 
+   // [S-43] Envía el correo de corrección de documento.
+   // Llama a → [S-41] MailService.sendMail
   async correccionDocumento(
     idExpediente: number,
     observacion: string | null = null,

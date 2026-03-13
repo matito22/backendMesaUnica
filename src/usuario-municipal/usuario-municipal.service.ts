@@ -5,13 +5,16 @@ import { UsuarioMunicipal } from './entities/usuario-municipal.entity';
 import { HandleService } from '../utils/handle.service';
 import * as bcrypt from 'bcrypt';
 import { InjectRepository } from '@nestjs/typeorm';
+import { SectorMunicipal } from 'src/sector-municipal/entities/sector-municipal.entity';
 
 @Injectable()
 export class UsuarioMunicipalService extends HandleService {
 
   constructor(
     @InjectRepository(UsuarioMunicipal)
-    private userRepository: Repository<UsuarioMunicipal>
+    private userRepository: Repository<UsuarioMunicipal>,
+    @InjectRepository(SectorMunicipal)
+    private sectorMunicipalRepository: Repository<SectorMunicipal>
   ) {
     super();
   }
@@ -26,20 +29,32 @@ export class UsuarioMunicipalService extends HandleService {
 
   // [S-32] Devuelve todos los usuarios municipales.
   findAll(): Promise<UsuarioMunicipal[]> {
-    const users = this.userRepository.find();
+    const users = this.userRepository.find(
+      {
+        relations: ['sector']
+      }
+    );
     return this.handleException(users, NotFoundException, 'No users found');
   }
 
   // [S-33] Devuelve un usuario por id. Lo usa también AuthService [S-07] al refrescar el token.
   async findOne(idUsuario: number): Promise<UsuarioMunicipal> {
-    const user = await this.userRepository.findOneBy({ idUsuario });
+    const user = await this.userRepository.findOne({
+      where: { idUsuario },
+      relations: ['sector'],
+    });
     return this.handleException(user, NotFoundException, `User with ID ${idUsuario} not found`);
   }
 
   // findByName lanza excepción si no existe. Para cuando el usuario YA tiene que existir.
-  async findByName(nombre: string): Promise<UsuarioMunicipal> {
-    const user = await this.userRepository.findOneBy({ nombre });
-    return this.handleException(user, NotFoundException, `User with name ${nombre} not found`);
+  async findByName(nombre: string): Promise<UsuarioMunicipal | null> {
+   return await this.userRepository.findOneBy({ nombre });
+    
+  }
+
+  async findByEmail(email: string): Promise<UsuarioMunicipal | null> {
+    return await this.userRepository.findOneBy({ email });
+   
   }
 
   // findByNameOptional retorna null si no existe (sin excepción).
@@ -52,7 +67,17 @@ export class UsuarioMunicipalService extends HandleService {
   async update(idUsuario: number, updateUserDto: UpdateUsuarioMunicipalDto): Promise<UsuarioMunicipal> {
     let existingUser = await this.userRepository.findOneBy({ idUsuario });
     existingUser = this.handleException(existingUser, NotFoundException, `User with ID ${idUsuario} not found`);
-    Object.assign(existingUser, updateUserDto);
+
+    // ✅ Si viene sector, lo resolvemos como entidad antes de asignar
+    const { sector, ...restoDto } = updateUserDto;
+    Object.assign(existingUser, restoDto);
+
+    if (sector) {
+      const sectorEntity = await this.sectorMunicipalRepository.findOneBy({ idSector: sector });
+      if (!sectorEntity) throw new NotFoundException(`Sector with ID ${sector} not found`);
+      existingUser.sector = sectorEntity;
+    }
+
     return this.userRepository.save(existingUser);
   }
 
@@ -76,4 +101,21 @@ export class UsuarioMunicipalService extends HandleService {
     const hashedToken = await bcrypt.hash(token, 10);
     await this.userRepository.update(idUser, { currentHashedRefreshToken: hashedToken });
   }
+
+
+    // Busca un contribuyente inactivo con ese id y ese token exacto.
+    // La combinación de las 3 condiciones evita activar cuentas ya activas o con token incorrecto.
+    async finOneInactiveByIdAndActivationToken(id: number, code: string): Promise<UsuarioMunicipal | null> {
+      return this.userRepository.findOneBy({ idUsuario: id, activationToken: code, activo: false });
+    }
+
+      // Activa la cuenta y pone el token en null para que el link de activación no se reutilice.
+      // Llamado desde AuthService [S-12].
+      async activateUsuario(usuario: UsuarioMunicipal, hashedPassword: string): Promise<void> {
+        usuario.activo = true;
+        usuario.password = hashedPassword;
+        usuario.activationToken = null; // Invalida el link de activación
+        await this.save(usuario);
+      }
+   
 }

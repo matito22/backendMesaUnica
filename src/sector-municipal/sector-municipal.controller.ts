@@ -1,8 +1,9 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, Query } from '@nestjs/common';
 import { SectorMunicipalService } from './sector-municipal.service';
 import { CreateSectorMunicipalDto } from './dto/create-sector-municipal.dto';
 import { UpdateSectorMunicipalDto } from './dto/update-sector-municipal.dto';
 import { Public } from 'src/auth/public-key';
+import { SectorMunicipal } from './entities/sector-municipal.entity';
 
 @Controller('sector-municipal')
 export class SectorMunicipalController {
@@ -20,6 +21,16 @@ export class SectorMunicipalController {
   @Get()
   findAll() {
     return this.sectorMunicipalService.findAll();
+  }
+
+  @Get('paginado')
+  findAllPaged(@Query('page') page=1,@Query('limit') limit=10) {
+    return this.sectorMunicipalService.findAllPaged({page,limit});
+  }
+
+  @Get('nombre/:nombre')
+  getSectorByName(@Param('nombre') nombre: string): Promise<SectorMunicipal | null> {
+    return this.sectorMunicipalService.findByName(nombre);
   }
 
   // [C-44] Devuelve un sector específico.

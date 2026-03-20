@@ -51,8 +51,8 @@ export class AuthService extends HandleService {
   
     const contribuyente = await this.contribuyenteService.findByDni(dni);
 
-    if (!contribuyente) { console.log('No existe el contribuyente'); return null; }
-    if (!contribuyente.activo) { console.log('Contribuyente no está activo'); return null; } // Solo puede loguear si activó la cuenta
+    if (!contribuyente) {  return null; }
+    if (!contribuyente.activo) { return null; } // Solo puede loguear si activó la cuenta
 
     const isMatch = await bcrypt.compare(pass, contribuyente.password);
 
@@ -85,7 +85,7 @@ export class AuthService extends HandleService {
 
   // [S-05] Igual que [S-03] pero para contribuyentes. El rol es fijo ('contribuyente').
   async loginContribuyente(contribuyente: any) {
-    console.log('Generando tokens para contribuyente:', contribuyente);
+
     const payload = {
       username: contribuyente.dni,
       sub: contribuyente.idContribuyente,
@@ -186,10 +186,14 @@ export class AuthService extends HandleService {
       activationToken,
     });
 
+    
     await  this.userService.save(newUser);
 
+    
+
     try {
-      await this.mailService.sendMail(
+      
+        await this.mailService.sendMail(
         createUserDto.email,
         'Bienvenido al Sistema Municipal',
         './mailUsuarioMunicipal',
@@ -198,11 +202,12 @@ export class AuthService extends HandleService {
           activationUrl: `${process.env.CORS_ORIGIN}/activar?id=${newUser.idUsuario}&code=${activationToken}&type=usuario-municipal`,
         }
       );
+      
     } catch (error) {
       console.error('Error al enviar el correo de activación:', error);
       // No lanzamos el error para no revertir el registro si el mail falla
     }
-
+    
     return newUser;
   }
 
@@ -224,21 +229,24 @@ export class AuthService extends HandleService {
       activationToken
     });
 
-    await this.contribuyenteService.save(newContribuyente);
 
+    await this.contribuyenteService.save(newContribuyente);
+ 
     try {
-      await this.mailService.sendMail(
+      
+       
+       await this.mailService.sendMail(
         createContribuyenteDto.email,
         'Bienvenido al Sistema Municipal',
-        './mailContribuyente',
+        './mailContribuyente',//<-- esto es el template que se va a usar
         {
           nombre: createContribuyenteDto.nombre,
           activationUrl: `${process.env.CORS_ORIGIN}/activar?id=${newContribuyente.idContribuyente}&code=${activationToken}&type=contribuyente`,
         }
       );
+    
     } catch (error) {
-      console.error('Error al enviar el correo de bienvenida:', error);
-      // No lanzamos el error para no revertir el registro si el mail falla
+      console.error('❌ Error completo:', error); // <-- antes solo logueabas el error pero lo tragabas
     }
 
     return newContribuyente;

@@ -17,6 +17,7 @@ import { ExpedienteModule } from 'src/expediente/expediente.module';
                     host: configService.get('MAIL_HOST'),
                     port: 465,
                     secure:true,
+                    
                     auth: {
                         user: configService.get('MAIL_USER'),
                         pass: configService.get('MAIL_PASS'),

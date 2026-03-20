@@ -12,6 +12,7 @@ import { DatosCatastrales } from '../datos-catastrales/entities/datos-catastrale
 import { RequisitoTipoExpediente } from '../requisito-tipo-expediente/entities/requisito-tipo-expediente.entity';
 import { Documento } from '../documento/entities/documento.entity';
 import { EstadoDocumento } from '../enum/estado-documento';
+import { CambiarEstadoDto } from './dto/cambiar-estado.dto';
 
 @Injectable()
 export class ExpedienteService extends HandleService {
@@ -36,7 +37,7 @@ export class ExpedienteService extends HandleService {
       const documentoRepository = manager.getRepository(Documento);
       const datosCatastralesRepository = manager.getRepository(DatosCatastrales);
 
-      console.log("Llega aca", dto);
+    
 
       const existing = await expedienteRepository.findOneBy({ numeroGde: dto.numeroGde });
       if (existing) throw new ConflictException(`Ya existe un expediente con número GDE ${dto.numeroGde}`);
@@ -120,15 +121,37 @@ export class ExpedienteService extends HandleService {
         'tipoExpediente',
         'tipoExpediente.requisitos',
         'tipoExpediente.requisitos.tipoDocumento',
+        'tipoExpediente.sectorResponsable',
         'expedientePadre',
         'documentos',
         'documentos.usuarioRevisor',
         'documentos.tipoDocumento',
         'datosCatastrales',
+        
       ],
     });
     return this.handleException(expediente, NotFoundException, `Expediente con ID ${idExpediente} no encontrado`);
   }
+
+  //Busca por slug
+  async findBySlug(slug: string): Promise<Expediente> {
+  const expediente = await this.expedienteRepository.findOne({
+    where: { slug },
+    relations: [
+      'contribuyente',
+      'tipoExpediente',
+      'tipoExpediente.requisitos',
+      'tipoExpediente.requisitos.tipoDocumento',
+      'tipoExpediente.sectorResponsable',
+      'expedientePadre',
+      'documentos',
+      'documentos.usuarioRevisor',
+      'documentos.tipoDocumento',
+      'datosCatastrales',
+    ],
+  });
+  return this.handleException(expediente, NotFoundException, 'Expediente no encontrado');
+}
 
   // [S-14] Busca por número GDE.
   async findByNumeroGde(numeroGde: string): Promise<Expediente> {
@@ -153,12 +176,13 @@ export class ExpedienteService extends HandleService {
 
   // [S-16] Filtra los expedientes por el sector que los debe revisar.
   async findBySectorResponsable(idSector: number,{ page, limit }: { page: number; limit: number }): Promise<{ data: Expediente[]; total: number }> {
-    console.log('ID del sector:', idSector);
     const [data, total] = await this.expedienteRepository.findAndCount({
       where: {
         tipoExpediente: { sectorResponsable: { idSector } },
       },
       relations: ['tipoExpediente', 'contribuyente', 'documentos', 'datosCatastrales'],
+      take: limit,
+      skip: (page - 1) * limit,
       order: { fechaCreacion: 'DESC' },
     });
 
@@ -193,4 +217,51 @@ export class ExpedienteService extends HandleService {
     existingExpediente = this.handleException(existingExpediente, NotFoundException, `Expediente con ID ${id} no encontrado`);
     return this.expedienteRepository.remove(existingExpediente);
   }
+
+
+private calcularEstadoExpediente(documentos: Documento[]): EstadoExpediente {
+
+  // Si todos están aprobados → trámite terminado
+  if (documentos.every(d => d.estado === EstadoDocumento.APROBADO)) {
+    return EstadoExpediente.FINALIZADO;
+  }
+
+  // Si hay al menos uno CARGADO → el municipio tiene algo para revisar
+  if (documentos.some(d => d.estado === EstadoDocumento.CARGADO)) {
+    return EstadoExpediente.EN_REVISION;
+  }
+
+  // Ninguno está CARGADO: si todos son PENDIENTE_RESUBIDA / APROBADO / PENDIENTE_CARGA
+  // y al menos uno está PENDIENTE_RESUBIDA → el ciudadano debe resubir
+  if (
+    documentos.every(d =>
+      d.estado === EstadoDocumento.PENDIENTE_RESUBIDA ||
+      d.estado === EstadoDocumento.APROBADO ||
+      d.estado === EstadoDocumento.PENDIENTE_CARGA
+    ) &&
+    documentos.some(d => d.estado === EstadoDocumento.PENDIENTE_RESUBIDA)
+  ) {
+    return EstadoExpediente.PENDIENTE_RESUBIDA;
+  }
+
+  // Si ninguno fue cargado todavía → recién arrancó
+  if (documentos.every(d => d.estado === EstadoDocumento.PENDIENTE_CARGA)) {
+    return EstadoExpediente.INICIADO;
+  }
+
+  // Caso intermedio: mix sin CARGADO (ej: PENDIENTE_CARGA + APROBADO)
+  return EstadoExpediente.EN_PROGRESO;
+}
+
+async cambiarEstado(cambiarEstadoDto: CambiarEstadoDto) {
+  const expediente = await this.expedienteRepository.findOne({
+    where: { idExpediente: cambiarEstadoDto.idExpediente },
+    relations: ['documentos'],
+  });
+  if (!expediente) throw new NotFoundException('Expediente no encontrado');
+
+  expediente.estado = this.calcularEstadoExpediente(expediente.documentos);
+  return this.expedienteRepository.save(expediente);
+}
+
 }

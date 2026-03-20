@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, Query } from '@nestjs/common';
 import { TipoDocumentoService } from './tipo-documento.service';
 import { CreateTipoDocumentoDto } from './dto/create-tipo-documento.dto';
 import { UpdateTipoDocumentoDto } from './dto/update-tipo-documento.dto';
+import { TipoDocumento } from './entities/tipo-documento.entity';
 
 @Controller('tipo-documento')
 export class TipoDocumentoController {
@@ -15,6 +16,16 @@ export class TipoDocumentoController {
   @Get()
   findAll() {
     return this.tipoDocumentoService.findAll();
+  }
+
+  @Get('nombre')
+  findByNombre(@Param('nombre') nombre: string): Promise<TipoDocumento | null> {
+    return this.tipoDocumentoService.findByNombre(nombre);
+  }
+
+  @Get('paginado')
+  findAllPaged(@Query('page') page=1,@Query('limit') limit=10) {
+    return this.tipoDocumentoService.findAllPaged({page,limit});
   }
 
   @Get(':id')

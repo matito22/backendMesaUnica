@@ -28,13 +28,16 @@ export class UsuarioMunicipalService extends HandleService {
   }
 
   // [S-32] Devuelve todos los usuarios municipales.
-  findAll(): Promise<UsuarioMunicipal[]> {
-    const users = this.userRepository.find(
-      {
-        relations: ['sector']
-      }
-    );
-    return this.handleException(users, NotFoundException, 'No users found');
+  async findAll({page,limit}:{page:number,limit:number}):  Promise<{ data: UsuarioMunicipal[]; total: number }> {
+    const skip = (page-1)*limit;
+    const [data, total] =await this.userRepository.findAndCount({
+      relations: ['sector'],
+      take: limit,
+      skip: skip,
+      order: { nombre: 'ASC' }
+    });
+    return { data, total };
+
   }
 
   // [S-33] Devuelve un usuario por id. Lo usa también AuthService [S-07] al refrescar el token.
@@ -46,6 +49,14 @@ export class UsuarioMunicipalService extends HandleService {
     return this.handleException(user, NotFoundException, `User with ID ${idUsuario} not found`);
   }
 
+  async findBySlug(slug: string): Promise<UsuarioMunicipal | null> {
+    const user = await this.userRepository.findOne({
+      where: { slug },
+      relations: ['sector'],
+    });
+    return this.handleException(user, NotFoundException, `User with slug ${slug} not found`);
+
+  }
   // findByName lanza excepción si no existe. Para cuando el usuario YA tiene que existir.
   async findByName(nombre: string): Promise<UsuarioMunicipal | null> {
    return await this.userRepository.findOneBy({ nombre });
@@ -64,11 +75,10 @@ export class UsuarioMunicipalService extends HandleService {
   }
 
   // [S-34] Actualiza datos del usuario.
-  async update(idUsuario: number, updateUserDto: UpdateUsuarioMunicipalDto): Promise<UsuarioMunicipal> {
-    let existingUser = await this.userRepository.findOneBy({ idUsuario });
-    existingUser = this.handleException(existingUser, NotFoundException, `User with ID ${idUsuario} not found`);
+  async updateBySlug(slug: string, updateUserDto: UpdateUsuarioMunicipalDto): Promise<UsuarioMunicipal> {
+    let existingUser = await this.userRepository.findOneBy({ slug });
+    existingUser = this.handleException(existingUser, NotFoundException, `User with slug ${slug} not found`);
 
-    // ✅ Si viene sector, lo resolvemos como entidad antes de asignar
     const { sector, ...restoDto } = updateUserDto;
     Object.assign(existingUser, restoDto);
 

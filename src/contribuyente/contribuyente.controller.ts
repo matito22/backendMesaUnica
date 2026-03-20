@@ -25,11 +25,16 @@ export class ContribuyenteController {
     return this.contribuyenteService.findByDni(dni);
   }
 
+  @Get('slug/:slug')
+  getUsuarioBySlug(@Param('slug') slug: string): Promise<Contribuyente | null> {
+    return this.contribuyenteService.findBySlug(slug);
+  }
+
   // [C-28] Devuelve todos los contribuyentes.
   // Llama a → [S-29] ContribuyenteService.findAll
   @Get()
-  findAll() {
-    return this.contribuyenteService.findAll();
+  findAll(@Query('page') page=1,@Query('limit') limit=10) {
+    return this.contribuyenteService.findAll({page,limit});
   }
 
   // [C-29] Actualiza datos de un contribuyente. Aún no se usa en el sistema.
@@ -37,6 +42,12 @@ export class ContribuyenteController {
   @Patch(':id')
   update(@Param('id', ParseIntPipe) id: number, @Body() updateContribuyenteDto: UpdateContribuyenteDto) {
     return this.contribuyenteService.update(+id, updateContribuyenteDto);
+  }
+
+
+  @Patch('slug/:slug')
+  updateBySlug(@Param('slug') slug: string, @Body() updateContribuyenteDto: UpdateContribuyenteDto) {
+    return this.contribuyenteService.updateBySlug(slug, updateContribuyenteDto);
   }
 
   // [C-30] Elimina un contribuyente. Aún no se usa en el sistema.

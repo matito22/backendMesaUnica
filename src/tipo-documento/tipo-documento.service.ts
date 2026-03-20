@@ -43,7 +43,9 @@ export class TipoDocumentoService extends HandleService {
   }
 
   findAll():Promise<TipoDocumento[]> {
-   const tipoDocumento = this.tipoDocumentoRepository.find();
+   const tipoDocumento = this.tipoDocumentoRepository.find({
+    relations: ['idSectorResponsable'],
+   });
        return this.handleException(
          tipoDocumento,
          NotFoundException,
@@ -52,7 +54,8 @@ export class TipoDocumentoService extends HandleService {
   }
 
   async findOne(idTipoDocumento: number):Promise<TipoDocumento> {
-    const sector = await this.tipoDocumentoRepository.findOneBy({ idTipoDocumento });
+    const sector = await this.tipoDocumentoRepository.findOneBy({ idTipoDocumento,
+     });
       return this.handleException(
         sector,
         NotFoundException,
@@ -60,6 +63,26 @@ export class TipoDocumentoService extends HandleService {
       );
   }
 
+  async findByNombre(nombre: string):Promise<TipoDocumento | null> {
+    const tipoDocumento = await this.tipoDocumentoRepository.findOneBy({ nombre });
+      return this.handleException(
+        tipoDocumento,
+        NotFoundException,
+        `Tipos de documentos with name ${nombre} not found`
+      );
+  }
+
+  async findAllPaged({page,limit}:{page:number,limit:number}): Promise<{ data: TipoDocumento[]; total: number }> {
+    const skip = (page-1)*limit;
+    const [data, total] =await this.tipoDocumentoRepository.findAndCount({
+      take: limit,
+      skip: skip,
+      order: { nombre: 'DESC' },
+      relations: ['idSectorResponsable'],
+    });
+
+    return { data, total };
+  }
   async update(idTipoDocumento: number, updateTipoDocumentoDto: UpdateTipoDocumentoDto): Promise<TipoDocumento> {
     let existingSector = await this.tipoDocumentoRepository.findOneBy({ idTipoDocumento });
        existingSector = this.handleException(

@@ -11,4 +11,8 @@ export class MailDto {
     @ApiProperty({ example: 'Juan'})
     @IsString()
     nombre: string;
+
+    @ApiProperty({ example: 'Perez'})
+    @IsString()
+    apellido: string;
 }

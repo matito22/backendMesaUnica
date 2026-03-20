@@ -2,14 +2,18 @@ import { Contribuyente } from "src/contribuyente/entities/contribuyente.entity";
 import { Documento } from "src/documento/entities/documento.entity";
 import { EstadoExpediente } from "src/enum/estado-expediente";
 import { TipoExpediente } from "src/tipo-expediente/entities/tipo-expediente.entity";
-import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, OneToOne } from "typeorm";
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, OneToOne, Generated } from "typeorm";
 import { DatosCatastrales } from 'src/datos-catastrales/entities/datos-catastrales.entity';
 
 @Entity('expediente')
 export class Expediente {
 
-    @PrimaryGeneratedColumn({ name: 'id_expediente', type: 'int' })
+    @PrimaryGeneratedColumn({ name: 'id_expediente', type: 'int', })
     idExpediente: number;
+
+    @Column({ name: 'slug', type: 'varchar', length: 36, unique: true })
+    @Generated('uuid')
+    slug: string;
 
     @Column({ name: 'numero_gde', type: 'varchar', length: 50, unique: true })
     numeroGde: string;

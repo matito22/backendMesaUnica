@@ -1,6 +1,6 @@
 import { RolUser } from "../../enum/rol-user";
 import { SectorMunicipal } from "../../sector-municipal/entities/sector-municipal.entity";
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, Generated, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity('usuario_municipal')
 export class UsuarioMunicipal {
@@ -8,6 +8,10 @@ export class UsuarioMunicipal {
     @PrimaryGeneratedColumn({name:'id_usuario',type:'int'})
     idUsuario: number;
 
+     @Column({ name: 'slug', type: 'varchar', length: 36, unique: true })
+    @Generated('uuid')
+    slug: string;
+    
 
     @Column({name:'nombre',type:'varchar'})
     nombre: string;

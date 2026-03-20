@@ -30,10 +30,26 @@ export class SectorMunicipalService extends HandleService {
     return this.handleException(sectores, NotFoundException, 'No sectores found');
   }
 
+  async findAllPaged({page,limit}:{page:number,limit:number}): Promise<{ data: SectorMunicipal[]; total: number }> {
+    const skip = (page-1)*limit;
+    const [data, total] =await this.sectorMunicipalRepository.findAndCount({
+      take: limit,
+      skip: skip,
+      order: { nombre: 'DESC' }
+    });
+    return { data, total };
+
+  }
+
   // [S-45] Devuelve un sector por id. Lo usa también AuthService [S-01] para determinar el rol del usuario.
   async findOne(idSector: number): Promise<SectorMunicipal> {
     const sector = await this.sectorMunicipalRepository.findOneBy({ idSector });
     return this.handleException(sector, NotFoundException, `SectorMunicipal with ID ${idSector} not found`);
+  }
+
+  async findByName(nombre: string): Promise<SectorMunicipal | null> {
+    const sector = await this.sectorMunicipalRepository.findOneBy({ nombre });
+    return this.handleException(sector, NotFoundException, `SectorMunicipal with name ${nombre} not found`);
   }
 
   // [S-46] Actualiza un sector.

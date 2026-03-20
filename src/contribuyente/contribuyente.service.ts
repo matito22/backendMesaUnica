@@ -26,9 +26,15 @@ export class ContribuyenteService extends HandleService {
   }
 
   // [S-29] Devuelve todos los contribuyentes.
-  findAll(): Promise<Contribuyente[]> {
-    const contribuyente = this.contribuyenteRepository.find();
-    return this.handleException(contribuyente, NotFoundException, 'No Contribuyentes found');
+  async findAll({page,limit}:{page:number,limit:number}): Promise<{ data: Contribuyente[]; total: number }> {
+     const skip = (page-1)*limit;
+
+     const [data, total] =await this.contribuyenteRepository.findAndCount({
+      take: limit,
+      skip: skip,
+      order: { fechaRegistro: 'DESC' }
+    });
+    return { data, total };
   }
 
   // [S-28] Busca por DNI exacto. Retorna null si no existe (sin excepción).
@@ -36,6 +42,14 @@ export class ContribuyenteService extends HandleService {
   async findByDni(dni: string): Promise<Contribuyente | null> {
     return this.contribuyenteRepository.findOneBy({ dni });
   }
+
+    async findBySlug(slug: string): Promise<Contribuyente | null> {
+      const user = await this.contribuyenteRepository.findOne({
+        where: { slug },
+      });
+      return this.handleException(user, NotFoundException, `Contribuyente with slug ${slug} not found`);
+
+    }
 
   // [S-27] Búsqueda parcial por DNI. Limita a 20 resultados para el autocomplete.
   async buscarContribuyentes(search?: string): Promise<Contribuyente[]> {
@@ -96,6 +110,14 @@ export class ContribuyenteService extends HandleService {
     Object.assign(existingContribuyente, updateContribuyenteDto);
     return this.contribuyenteRepository.save(existingContribuyente);
   }
+
+    async updateBySlug(slug: string, updateContribuyenteDto: UpdateContribuyenteDto): Promise<Contribuyente> {
+      let existingContribuyente = await this.contribuyenteRepository.findOneBy({ slug });
+      existingContribuyente = this.handleException(existingContribuyente, NotFoundException, `Contribuyente with slug ${slug} not found`);
+      Object.assign(existingContribuyente, updateContribuyenteDto);
+      return this.contribuyenteRepository.save(existingContribuyente);
+
+    }
 
   // [S-31] Elimina el contribuyente. Aún no se usa en el sistema.
   async remove(idContribuyente: number) {

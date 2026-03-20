@@ -2,13 +2,17 @@ import { EstadoDocumento } from "src/enum/estado-documento";
 import { Expediente } from "src/expediente/entities/expediente.entity";
 import { TipoDocumento } from "src/tipo-documento/entities/tipo-documento.entity";
 import { UsuarioMunicipal } from "src/usuario-municipal/entities/usuario-municipal.entity";
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, Generated, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity('documento')
 export class Documento {
 
     @PrimaryGeneratedColumn({ name: 'id_documento', type: 'int' })
     idDocumento: number;
+
+    @Column({ name: 'slug', type: 'varchar', length: 36, unique: true })
+    @Generated('uuid')
+    slug: string;
 
     @Column({ name: 'nombre_archivo', type: 'varchar', length: 255, nullable: true })
     nombreArchivo: string;

@@ -3,6 +3,8 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { ContribuyenteService } from '../contribuyente/contribuyente.service';
 import { v4 as uuidv4 } from 'uuid';
 import { ExpedienteService } from '../expediente/expediente.service';
+import MailComposer = require('nodemailer/lib/mail-composer');
+import { ImapFlow } from 'imapflow';
 
 @Injectable()
 export class MailService {
@@ -14,9 +16,19 @@ export class MailService {
 
   // [S-41] Envía cualquier email usando las plantillas .hbs de /src/templates/.
   // Lo llaman AuthService [S-02] y MailController [C-40].
-  async sendMail(to: string, subject: string, template: string, context: object): Promise<void> {
+  /*async sendMail(to: string, subject: string, template: string, context: object): Promise<void> {
     await this.mailService.sendMail({ to, subject, template, context });
-  }
+  }*/
+
+    async sendMail(to: string, subject: string, template: string, context: object): Promise<any> {
+    const result = await this.mailService.sendMail({ to, subject, template, context });
+      try {
+        await this.saveToSent({ from: process.env.MAIL_FROM, to, subject });
+      } catch (e) {
+        console.warn('No se pudo guardar en enviados:', e.message);
+      }
+    return result;
+}
 
   // [S-42] Reenvía el email de activación. Actualiza el email si se provee uno nuevo.
   // Si el activationToken fue consumido, genera uno nuevo antes de enviar.
@@ -98,4 +110,29 @@ export class MailService {
 
     return { message: 'Email enviado correctamente', email: emailToUse };
   }
+
+
+
+  async saveToSent(mailOptions: object): Promise<void> {
+  // 1. Construís el raw RFC2822 del mensaje
+  const mail = new MailComposer(mailOptions);
+  const rawMessage: Buffer = await new Promise((resolve, reject) => {
+    mail.compile().build((err, msg) => (err ? reject(err) : resolve(msg)));
+  });
+
+  // 2. Lo subís a la carpeta Sent por IMAP
+  const client = new ImapFlow({
+    host: process.env.MAIL_HOST!,
+    port: 993,
+    secure: true,
+    auth: {
+      user: process.env.MAIL_USER!,
+      pass: process.env.MAIL_PASS,
+    },
+  });
+
+  await client.connect();
+  await client.append('Sent', rawMessage, ['\\Seen']); // \\Seen = marcar como leído
+  await client.logout();
+}
 }

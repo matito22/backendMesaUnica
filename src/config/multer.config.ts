@@ -5,88 +5,72 @@ import { BadRequestException } from '@nestjs/common';
 import { Request } from 'express';
 import { mkdirSync } from 'fs';
 
-const MIME_TYPES_PERMITIDOS = [
-  // Documentos
-  'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  // Imágenes
-  'image/jpeg',
-  'image/png',
-  'image/webp',
+export type PerfilSubida = 'EDITABLE' | 'SOLO_LECTURA';
 
-  'application/acad',
-  'application/x-acad',
-  'application/autocad_dwg',
-  'application/dwg',
-  'application/x-dwg',
-  'image/vnd.dwg',
-  'drawing/dwg',
-  // AutoCAD DXF — distintos OS envían distintos MIME types para el mismo formato
-  'application/dxf',
-  'application/x-dxf',
-  'image/vnd.dxf',
-];
-
-
-const EXTENSIONES_PERMITIDAS = [
-  '.pdf', '.doc', '.docx',
-  '.jpg', '.jpeg', '.png', '.webp',
-  '.dwg', '.dxf',
-];
-
-export const MAX_TAMANIO_BYTES = 50 * 1024 * 1024; 
-
-export const multerConfig = {
-  storage: diskStorage({
-    destination: (req: Request, file: Express.Multer.File, callback) => {
-      const ahora = new Date();
-      const carpeta = join(
-        process.cwd(),
-        'uploads',
-        String(ahora.getFullYear()),
-        String(ahora.getMonth() + 1).padStart(2, '0'),
-      );
-      mkdirSync(carpeta, { recursive: true });
-      callback(null, carpeta);
-    },
-
-    filename: (req: Request, file: Express.Multer.File, callback) => {
-      const extension = extname(file.originalname).toLowerCase();
-      const timestamp = Date.now();
-      const random = Math.round(Math.random() * 1e9);
-      callback(null, `${timestamp}-${random}${extension}`);
-    },
-  }),
-
-  fileFilter: (
-    req: Request,
-    file: Express.Multer.File,
-    callback: (error: Error | null, aceptar: boolean) => void,
-  ) => {
-    const extension = extname(file.originalname).toLowerCase();
-    const mimePermitido = MIME_TYPES_PERMITIDOS.includes(file.mimetype);
-
-    // AutoCAD a veces llega como application/octet-stream; validar por extensión
-    const esOctetStreamValido =
-      file.mimetype === 'application/octet-stream' &&
-      EXTENSIONES_PERMITIDAS.includes(extension);
-
-    if (!mimePermitido && !esOctetStreamValido) {
-      return callback(
-        new BadRequestException(
-          `Tipo de archivo no permitido: "${file.mimetype}" (${extension}). ` +
-          `Formatos aceptados: PDF, DOC, DOCX, JPG, PNG, WEBP, DWG, DXF`,
-        ),
-        false,
-      );
-    }
-
-    callback(null, true);
+const REGLAS = {
+  EDITABLE: {
+    mimeTypes: [
+      'application/pdf',
+      'application/acad', 'application/x-acad',
+      'application/autocad_dwg', 'application/dwg',
+      'application/x-dwg', 'image/vnd.dwg', 'drawing/dwg',
+    ],
+    extensiones: ['.pdf', '.dwg'],
+    descripcion: 'PDF, DWG',
   },
-
-  limits: {
-    fileSize: MAX_TAMANIO_BYTES,
-    files: 1,
+  SOLO_LECTURA: {
+    mimeTypes: [
+      'application/pdf',
+      'application/dxf', 'application/x-dxf', 'image/vnd.dxf',
+      'application/dwf',
+    'application/x-dwf',
+    'model/vnd.dwf',
+    'drawing/dwf',
+    ],
+    extensiones: ['.pdf', '.dxf','.dwf'],
+    descripcion: 'PDF, DXF, DWF',
   },
 };
+
+export const MAX_TAMANIO_BYTES = 50 * 1024 * 1024;
+
+export function crearMulterConfig(perfil: PerfilSubida) {
+  const reglas = REGLAS[perfil];
+
+  return {
+    storage: diskStorage({
+      destination: (_req: Request, _file: Express.Multer.File, cb) => {
+        const ahora = new Date();
+        const carpeta = join(
+          process.cwd(), 'uploads',
+          String(ahora.getFullYear()),
+          String(ahora.getMonth() + 1).padStart(2, '0'),
+        );
+        mkdirSync(carpeta, { recursive: true });
+        cb(null, carpeta);
+      },
+      filename: (_req: Request, file: Express.Multer.File, cb) => {
+        const ext = extname(file.originalname).toLowerCase();
+        cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
+      },
+    }),
+
+    fileFilter: (_req: Request, file: Express.Multer.File, cb: any) => {
+      const ext = extname(file.originalname).toLowerCase();
+      const mimeOk = reglas.mimeTypes.includes(file.mimetype);
+      const octetOk = file.mimetype === 'application/octet-stream' && reglas.extensiones.includes(ext);
+
+      if (!mimeOk && !octetOk) {
+        return cb(
+          new BadRequestException(
+            `Archivo no permitido: "${file.mimetype}" (${ext}). Tu sector acepta: ${reglas.descripcion}`
+          ),
+          false,
+        );
+      }
+      cb(null, true);
+    },
+
+    limits: { fileSize: MAX_TAMANIO_BYTES, files: 1 },
+  };
+}

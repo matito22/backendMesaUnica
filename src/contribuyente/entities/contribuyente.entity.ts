@@ -1,5 +1,5 @@
 import { Exclude } from "class-transformer";
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, Generated, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity('contribuyente')
 export class Contribuyente {
@@ -10,6 +10,10 @@ export class Contribuyente {
 
     @Column({name:'nombre',type:'varchar',length:100})
     nombre: string;
+
+    @Column({name:'slug',type:'varchar',length:36,unique:true})
+    @Generated('uuid')
+    slug: string;
 
     @Column({name:'dni',type:'varchar',length:20})
     dni: string;

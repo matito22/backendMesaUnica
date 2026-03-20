@@ -157,7 +157,6 @@ export class AuthController {
   async logout(@Req() req, @Res({ passthrough: true }) res: Response) {
     res.clearCookie('access_token');
     res.clearCookie('refresh_token');
-    console.log(req.user);
     await this.authService.logout(req.user.userId);
     return { message: 'Logout successful' };
   }
@@ -169,7 +168,6 @@ export class AuthController {
   async logoutContribuyente(@Req() req, @Res({ passthrough: true }) res: Response) {
     res.clearCookie('access_token');
     res.clearCookie('refresh_token');
-    console.log(req.user);
     await this.authService.logoutContribuyente(req.user.idContribuyente);
     return { message: 'Logout contribuyente successful' };
   }

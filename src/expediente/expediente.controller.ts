@@ -10,6 +10,7 @@ import { Roles } from '../auth/roles.decorator';
 import { RolUser } from '../enum/rol-user';
 import { RolesGuard } from '../auth/roles.guard';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CambiarEstadoDto } from './dto/cambiar-estado.dto';
 
 // Las rutas con path fijo (/gde, /contribuyente, /revisor) van ANTES de /:id
 // para que NestJS no intente parsear "gde" o "revisor" como un número.
@@ -23,15 +24,18 @@ export class ExpedienteController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   create(@Body() createExpedienteDto: CreateExpedienteDto) {
-    console.log("Llega aca", createExpedienteDto);
     return this.expedienteService.create(createExpedienteDto);
+  }
+
+  @Post('cambiar-estado')
+  cambiarEstado(@Body() cambiarEstadoDto: CambiarEstadoDto) {
+    return this.expedienteService.cambiarEstado(cambiarEstadoDto);
   }
 
   // [C-12] Devuelve expedientes activos (INICIADO o EN_REVISION).
   // Llama a → [S-13] ExpedienteService.findAll
   @Get()
   findAll(@Query('page') page=1,@Query('limit') limit=10) {
-    console.log("Se llama a findall");
     return this.expedienteService.findAll({page,limit});
   }
 
@@ -57,10 +61,15 @@ export class ExpedienteController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   getByRevisor(@Request() req,@Query('page') page=1,@Query('limit') limit=10) {
     const idSector: number = req.user.idSector;
-    console.log('ID del sector:', idSector);
-    console.log('Rol del usuario:', req.user.role);
     return this.expedienteService.findBySectorResponsable(idSector,{page,limit});
   }
+
+
+  @Get('slug/:slug')
+findBySlug(@Param('slug') slug: string) {
+  console.log(slug);
+  return this.expedienteService.findBySlug(slug);
+}
 
   // [C-16] Actualiza solo los datos del formulario del expediente (JSON libre).
   // Ruta separada de PATCH /:id para no pisar otros campos del expediente.

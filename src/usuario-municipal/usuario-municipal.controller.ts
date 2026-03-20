@@ -24,8 +24,13 @@ export class UsuarioMunicipalController {
   // [C-31] Devuelve todos los usuarios municipales.
   // Llama a → [S-32] UsuarioMunicipalService.findAll
   @Get()
-  findAll() {
-    return this.usuarioMunicipalService.findAll();
+  findAll(@Query('page') page=1,@Query('limit') limit=10) {
+    return this.usuarioMunicipalService.findAll({page,limit});
+  }
+
+  @Get('slug/:slug')
+  getUsuarioBySlug(@Param('slug') slug: string): Promise<UsuarioMunicipal | null> {
+    return this.usuarioMunicipalService.findBySlug(slug);
   }
 
  
@@ -39,10 +44,10 @@ export class UsuarioMunicipalController {
 
   // [C-33] Actualiza datos de un usuario municipal.
   // Llama a → [S-34] UsuarioMunicipalService.update
-  @Patch(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() updateUsuarioMunicipalDto: UpdateUsuarioMunicipalDto) {
+  @Patch('slug/:slug')
+  updateBySlug(@Param('slug') slug: string, @Body() updateUsuarioMunicipalDto: UpdateUsuarioMunicipalDto) {
 
-    return this.usuarioMunicipalService.update(+id, updateUsuarioMunicipalDto);
+    return this.usuarioMunicipalService.updateBySlug(slug, updateUsuarioMunicipalDto);
   }
 
   // [C-34] Elimina un usuario municipal.

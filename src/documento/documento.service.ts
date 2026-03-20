@@ -11,6 +11,7 @@ import { SubirDocumentoDto } from './dto/subir-documento.dto';
 import { RevisarDocumentoDto } from './dto/revisar-documento.dto';
 import { UsuarioMunicipal } from 'src/usuario-municipal/entities/usuario-municipal.entity';
 import { HistorialDocumento } from 'src/historial-documento/entities/historial-documento.entity';
+import { ExpedienteService } from 'src/expediente/expediente.service';
 
 // Ciclo de vida de un documento:
 // PENDIENTE_CARGA → CARGADO → APROBADO
@@ -29,12 +30,14 @@ export class DocumentoService {
     private readonly usuarioRepository: Repository<UsuarioMunicipal>,
     @InjectRepository(HistorialDocumento)
     private readonly historialRepository: Repository<HistorialDocumento>,
+
+    private readonly expedienteService: ExpedienteService,
   ) {}
 
   // [S-21] Sube un archivo o reemplaza uno existente si está en estado permitido.
   // Solo permite resubida si el estado es PENDIENTE_CARGA o PENDIENTE_RESUBIDA.
-  async subirArchivo(dto: SubirDocumentoDto, file: Express.Multer.File): Promise<Documento> {
-    const expediente = await this.expedienteRepository.findOne({ where: { idExpediente: dto.idExpediente } });
+  async subirArchivo(dto: SubirDocumentoDto, file: Express.Multer.File,idExpediente: number): Promise<Documento> {
+    const expediente = await this.expedienteRepository.findOne({ where: { idExpediente: idExpediente } });
     if (!expediente) throw new NotFoundException('Expediente no encontrado');
 
     const tipoDocumento = await this.tipoDocumentoRepository.findOne({ where: { idTipoDocumento: dto.idTipoDocumento } });
@@ -43,7 +46,7 @@ export class DocumentoService {
     // Verificamos si ya existe un documento de ese tipo en ese expediente
     const existente = await this.documentoRepository.findOne({
       where: {
-        expediente: { idExpediente: dto.idExpediente },
+        expediente: { idExpediente: idExpediente },
         tipoDocumento: { idTipoDocumento: dto.idTipoDocumento },
       },
     });
@@ -71,7 +74,10 @@ export class DocumentoService {
       existente.fechaUltimaCarga   = new Date();
       existente.observacionActual  = null; // Limpiamos la observación anterior del revisor
 
+      await this.expedienteService.cambiarEstado({ idExpediente:idExpediente});
+
       return this.documentoRepository.save(existente);
+
     }
 
     const nuevo = this.documentoRepository.create({
@@ -85,12 +91,14 @@ export class DocumentoService {
       tipoDocumento,
     });
 
+   
     return this.documentoRepository.save(nuevo);
   }
 
-  // [S-25] El revisor aprueba o rechaza un documento. Guarda el resultado en el doc y en el historial.
-  async revisarDocumento(idDocumento: number, dto: RevisarDocumentoDto, idUsuario: number): Promise<Documento> {
-    const documento = await this.documentoRepository.findOne({ where: { idDocumento } });
+
+
+    async revisarDocumentoBySlug(slug: string, dto: RevisarDocumentoDto, idUsuario: number): Promise<Documento> {
+    const documento = await this.documentoRepository.findOne({ where: { slug } });
     if (!documento) throw new NotFoundException('Documento no encontrado');
 
     const estadoAnterior = documento.estado; // Guardamos el estado antes de cambiarlo para el historial
@@ -114,12 +122,19 @@ export class DocumentoService {
     });
     await this.historialRepository.save(historial);
 
+    // Recalculamos el estado del expediente según el nuevo estado de sus documentos
+    const doc = await this.documentoRepository.findOne({
+      where: { idDocumento: documento.idDocumento },
+      relations: ['expediente'],
+    });
+    if (!doc) throw new NotFoundException('Documento no encontrado');
+    await this.expedienteService.cambiarEstado({ idExpediente: doc.expediente.idExpediente });
+
     return documento;
   }
 
-  // [S-24] Devuelve la ruta del archivo. Verifica que el archivo físico exista en disco.
-  async obtenerRutaParaDescarga(idDocumento: number): Promise<string> {
-    const documento = await this.documentoRepository.findOne({ where: { idDocumento } });
+  async obtenerRutaParaDescargaBySlug(slug: string): Promise<string> {
+    const documento = await this.documentoRepository.findOne({ where: { slug } });
     if (!documento) throw new NotFoundException('Documento no encontrado');
 
     // Verificamos que el archivo físico exista, ya que podría haberse borrado del disco manualmente
@@ -129,6 +144,9 @@ export class DocumentoService {
 
     return documento.rutaAlmacenamiento;
   }
+
+
+
 
   // [S-22] Devuelve los documentos de un expediente con tipo y revisor.
   async findByExpediente(idExpediente: number): Promise<Documento[]> {
@@ -143,6 +161,15 @@ export class DocumentoService {
   async findOne(idDocumento: number): Promise<Documento> {
     const doc = await this.documentoRepository.findOne({
       where: { idDocumento },
+      relations: ['expediente', 'tipoDocumento', 'usuarioRevisor'],
+    });
+    if (!doc) throw new NotFoundException('Documento no encontrado');
+    return doc;
+  }
+
+  async findOneBySlug(slug: string): Promise<Documento> {
+    const doc = await this.documentoRepository.findOne({
+      where: { slug },
       relations: ['expediente', 'tipoDocumento', 'usuarioRevisor'],
     });
     if (!doc) throw new NotFoundException('Documento no encontrado');

@@ -10,7 +10,7 @@ export class LocalContribuyenteStrategy extends PassportStrategy(Strategy, 'loca
   }
 
   async validate(dni: string, password: string): Promise<any> {
-    console.log('Validating contribuyente with dni:', dni); // Verificar el dni recibido  
+
     const contribuyente = await this.authService.validateContribuyente(dni, password);
     if (!contribuyente) {
       throw new UnauthorizedException();

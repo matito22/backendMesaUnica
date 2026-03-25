@@ -7,6 +7,7 @@ import { MailService } from './mail.service';
 import { MailController } from './mail.controller';
 import { ContribuyenteModule } from '../contribuyente/contribuyente.module';
 import { ExpedienteModule } from 'src/expediente/expediente.module';
+import { UsuarioMunicipalModule } from 'src/usuario-municipal/usuario-municipal.module';
 
 @Module({
     imports: [
@@ -38,6 +39,7 @@ import { ExpedienteModule } from 'src/expediente/expediente.module';
         }),
         ContribuyenteModule,
         ExpedienteModule
+
     ],
   providers: [MailService],
   exports: [MailService],

@@ -1,21 +1,23 @@
 import {
+  BadRequestException,
   ConflictException, Injectable, NotFoundException, UnauthorizedException
 } from '@nestjs/common';
 import { HandleService } from '../utils/handle.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { UsuarioMunicipalService } from 'src/usuario-municipal/usuario-municipal.service';
-import { CreateUsuarioMunicipalDto } from 'src/usuario-municipal/dto/create-usuario-municipal.dto';
-import { UsuarioMunicipal } from 'src/usuario-municipal/entities/usuario-municipal.entity';
+import * as crypto from 'crypto';
+import { UsuarioMunicipalService } from '../usuario-municipal/usuario-municipal.service';
+import { CreateUsuarioMunicipalDto } from '../usuario-municipal/dto/create-usuario-municipal.dto';
+import { UsuarioMunicipal } from '../usuario-municipal/entities/usuario-municipal.entity';
 import { RolUser } from '../enum/rol-user';
 import { SectorMunicipalService } from 'src/sector-municipal/sector-municipal.service';
-import { SectorMunicipal } from 'src/sector-municipal/entities/sector-municipal.entity';
-import { ContribuyenteService } from 'src/contribuyente/contribuyente.service';
-import { CreateContribuyenteDto } from 'src/contribuyente/dto/create-contribuyente.dto';
-import { Contribuyente } from 'src/contribuyente/entities/contribuyente.entity';
+
+import { ContribuyenteService } from '../contribuyente/contribuyente.service';
+import { CreateContribuyenteDto } from '../contribuyente/dto/create-contribuyente.dto';
+import { Contribuyente } from '../contribuyente/entities/contribuyente.entity';
 import { randomBytes } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
-import { MailService } from 'src/mail/mail.service';
+import { MailService } from '../mail/mail.service';
 import { ActivateContribuyenteDto } from './dto/activate-contribuyente.dto';
 import { ActivateUsuarioDto } from './dto/activate-usuario.dto';
 
@@ -27,6 +29,7 @@ export class AuthService extends HandleService {
     private userService: UsuarioMunicipalService,
     private sectorMunicipalService: SectorMunicipalService,
     private contribuyenteService: ContribuyenteService,
+    private readonly usuarioMunicipalService: UsuarioMunicipalService,
     private readonly mailService: MailService
   ) {
     super();
@@ -284,4 +287,54 @@ export class AuthService extends HandleService {
   async logoutContribuyente(idContribuyente: number) {
     await this.contribuyenteService.removeRefreshToken(idContribuyente);
   }
+
+
+async forgotPassword(email: string, userType: 'municipal' | 'contribuyente'): Promise<void> {
+
+  const plainToken = crypto.randomBytes(32).toString('hex');
+  const hashedToken = await bcrypt.hash(plainToken, 10);
+  const expires = new Date(Date.now() + 30 * 60 * 1000);
+
+  if (userType === 'municipal') {
+    const user = await this.usuarioMunicipalService.findByEmail(email);
+    if (!user) return;
+    await this.usuarioMunicipalService.setResetPasswordToken(user.idUsuario, hashedToken, expires);
+    const resetLink = `${process.env.CORS_ORIGIN}/reset-password?token=${plainToken}&email=${email}&type=${userType}`;
+    await this.mailService.sendMail(user.email, 'Recuperación de contraseña', './resetPassword', { nombre: user.nombre, resetUrl: resetLink });
+
+  } else {
+    const user = await this.contribuyenteService.findByEmail(email);
+    if (!user) return;
+    await this.contribuyenteService.setResetPasswordToken(user.idContribuyente, hashedToken, expires);
+    const resetLink = `${process.env.CORS_ORIGIN}/reset-password?token=${plainToken}&email=${email}&type=${userType}`;
+    await this.mailService.sendMail(user.email, 'Recuperación de contraseña', './resetPassword', { nombre: user.nombre, resetUrl: resetLink });
+  }
+}
+
+async resetPassword(
+  email: string,
+  plainToken: string,
+  newPassword: string,
+  userType: 'municipal' | 'contribuyente'
+): Promise<void> {
+
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+  if (userType === 'municipal') {
+    const user = await this.usuarioMunicipalService.findByEmail(email);
+    if (!user?.reset_password_token || !user?.reset_password_expires) throw new BadRequestException('Token inválido o expirado');
+    if (new Date() > user.reset_password_expires) throw new BadRequestException('El token ha expirado, solicitá uno nuevo');
+    const isValid = await bcrypt.compare(plainToken, user.reset_password_token);
+    if (!isValid) throw new BadRequestException('Token inválido o expirado');
+    await this.usuarioMunicipalService.clearResetPasswordToken(user.idUsuario, hashedPassword);
+
+  } else {
+    const user = await this.contribuyenteService.findByEmail(email);
+    if (!user?.reset_password_token || !user?.reset_password_expires) throw new BadRequestException('Token inválido o expirado');
+    if (new Date() > user.reset_password_expires) throw new BadRequestException('El token ha expirado, solicitá uno nuevo');
+    const isValid = await bcrypt.compare(plainToken, user.reset_password_token);
+    if (!isValid) throw new BadRequestException('Token inválido o expirado');
+    await this.contribuyenteService.clearResetPasswordToken(user.idContribuyente, hashedPassword);
+  }
+}
 }

@@ -42,4 +42,10 @@ export class UsuarioMunicipal {
 
     @Column({ name: 'activation_token', type: 'varchar', length: 255, nullable: true })
     activationToken: string | null;
+
+    @Column({ type: 'varchar', length: 255, nullable: true, default: null })
+    reset_password_token: string | null;
+
+    @Column({ type: 'datetime', nullable: true, default: null })
+    reset_password_expires: Date | null;
 }

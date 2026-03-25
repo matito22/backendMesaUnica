@@ -35,8 +35,11 @@ export class ExpedienteController {
   // [C-12] Devuelve expedientes activos (INICIADO o EN_REVISION).
   // Llama a → [S-13] ExpedienteService.findAll
   @Get()
-  findAll(@Query('page') page=1,@Query('limit') limit=10) {
-    return this.expedienteService.findAll({page,limit});
+  findAll(@Query('page') page = '1', @Query('limit') limit = '10') {
+    return this.expedienteService.findAll({
+      page: Math.max(1, parseInt(page, 10) || 1),
+      limit: Math.max(1, parseInt(limit, 10) || 10),
+    });
   }
 
   // [C-13] Busca un expediente por su número GDE.
@@ -49,8 +52,15 @@ export class ExpedienteController {
   // [C-14] Devuelve todos los expedientes de un contribuyente.
   // Llama a → [S-15] ExpedienteService.findByContribuyente
   @Get('contribuyente/:idContribuyente')
-  findByContribuyente(@Param('idContribuyente', ParseIntPipe) idContribuyente: number,@Query('page') page=1,@Query('limit') limit=10) {
-    return this.expedienteService.findByContribuyente(idContribuyente,{page,limit});
+  findByContribuyente(
+    @Param('idContribuyente', ParseIntPipe) idContribuyente: number,
+    @Query('page') page = '1',
+    @Query('limit') limit = '10',
+  ) {
+    return this.expedienteService.findByContribuyente(idContribuyente, {
+      page: Math.max(1, parseInt(page, 10) || 1),
+      limit: Math.max(1, parseInt(limit, 10) || 10),
+    });
   }
 
   // [C-15] Devuelve los expedientes que le corresponden al sector del revisor logueado.
@@ -59,17 +69,23 @@ export class ExpedienteController {
   @Get('revisor')
   @Roles(RolUser.REVISOR)
   @UseGuards(JwtAuthGuard, RolesGuard)
-  getByRevisor(@Request() req,@Query('page') page=1,@Query('limit') limit=10) {
+  getByRevisor(
+    @Request() req,
+    @Query('page') page = '1',
+    @Query('limit') limit = '10',
+  ) {
     const idSector: number = req.user.idSector;
-    return this.expedienteService.findBySectorResponsable(idSector,{page,limit});
+    return this.expedienteService.findBySectorResponsable(idSector, {
+      page: Math.max(1, parseInt(page, 10) || 1),
+      limit: Math.max(1, parseInt(limit, 10) || 10),
+    });
   }
 
-
   @Get('slug/:slug')
-findBySlug(@Param('slug') slug: string) {
-  console.log(slug);
-  return this.expedienteService.findBySlug(slug);
-}
+  findBySlug(@Param('slug') slug: string) {
+    console.log(slug);
+    return this.expedienteService.findBySlug(slug);
+  }
 
   // [C-16] Actualiza solo los datos del formulario del expediente (JSON libre).
   // Ruta separada de PATCH /:id para no pisar otros campos del expediente.

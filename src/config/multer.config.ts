@@ -39,10 +39,10 @@ export function crearMulterConfig(perfil: PerfilSubida) {
 
   return {
     storage: diskStorage({
-      destination: (_req: Request, _file: Express.Multer.File, cb) => {
+    destination: (_req: Request, _file: Express.Multer.File, cb) => {
         const ahora = new Date();
         const carpeta = join(
-          process.cwd(), 'uploads',
+          process.env.STORAGE_PATH ?? join(process.cwd(), 'uploads'), // fallback local
           String(ahora.getFullYear()),
           String(ahora.getMonth() + 1).padStart(2, '0'),
         );

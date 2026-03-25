@@ -1,6 +1,7 @@
 import {
   Controller, Get, Post, Body, Delete, HttpStatus, HttpCode,
-  UseGuards, Request, Res, UnauthorizedException, Req, Query
+  UseGuards, Request, Res, UnauthorizedException, Req, Query,
+  ForbiddenException
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { ApiBearerAuth, ApiBody } from '@nestjs/swagger';
@@ -18,6 +19,9 @@ import { RolUser } from '../enum/rol-user';
 import { ActivateContribuyenteDto } from './dto/activate-contribuyente.dto';
 import { LoginContribuyenteDto } from './dto/login-contribuyente.dto';
 import { ActivateUsuarioDto } from './dto/activate-usuario.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+
 
 // Punto de entrada HTTP para autenticación: registro, login, logout, refresh y activación de cuenta.
 // LocalAuthGuard valida usuario/password → llama a local.strategy.ts → AuthService.validateUser
@@ -56,6 +60,15 @@ export class AuthController {
   @Post('login')
   async login(@Request() req, @Res({ passthrough: true }) res: Response) {
     const { token, refreshToken } = await this.authService.login(req.user);
+
+    // [C-03-A] Validación de IP de red municipal (debe iniciar con 10.10)
+    const clientIp =
+      (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() ??
+      req.socket.remoteAddress ?? '';
+
+    if (!clientIp.startsWith('10.10')) {
+      throw new ForbiddenException('Access restricted to municipal network');
+    }
 
     res.cookie('access_token', token, {
       httpOnly: true, // No accesible desde JS del navegador (protección XSS)
@@ -108,14 +121,19 @@ export class AuthController {
   // [C-05] Renueva el access_token usando el refresh_token de la cookie.
   // @Public() porque el access_token ya expiró cuando se llama esto.
   // Llama a → [S-07] AuthService.refreshToken
-  @Public()
-  @HttpCode(HttpStatus.OK)
-  @Post('refresh')
-  async refresh(@Req() req, @Res({ passthrough: true }) res: Response) {
-    const refreshToken = req.cookies['refresh_token'];
+@Public()
+@HttpCode(HttpStatus.OK)
+@Post('refresh')
+async refresh(@Req() req, @Res({ passthrough: true }) res: Response) {
+  const refreshToken = req.cookies['refresh_token'];
 
-    if (!refreshToken) throw new UnauthorizedException('No refresh token');
+  if (!refreshToken) {
+    res.clearCookie('access_token', { path: '/' });
+    res.clearCookie('refresh_token', { path: '/' });
+    throw new UnauthorizedException('No refresh token');
+  }
 
+  try {
     const { access_token } = await this.authService.refreshToken(refreshToken);
 
     res.cookie('access_token', access_token, {
@@ -123,10 +141,17 @@ export class AuthController {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 15 * 60 * 1000,
+      path: '/',
     });
 
     return { message: 'Access token refreshed' };
+  } catch (error) {
+    // Token inválido → limpiar las cookies huérfanas
+    res.clearCookie('access_token', { path: '/' });
+    res.clearCookie('refresh_token', { path: '/' });
+    throw new UnauthorizedException('Invalid refresh token');
   }
+}
 
   // [C-06] Igual que [C-05] pero para contribuyentes.
   // Llama a → [S-08] AuthService.refreshTokenContribuyente
@@ -134,10 +159,17 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Post('refresh/contribuyente')
   async refreshContribuyente(@Req() req, @Res({ passthrough: true }) res: Response) {
-    const refreshToken = req.cookies['refresh_token'];
+   
 
-    if (!refreshToken) throw new UnauthorizedException('No refresh token');
+     const refreshToken = req.cookies['refresh_token'];
 
+  if (!refreshToken) {
+    res.clearCookie('access_token', { path: '/' });
+    res.clearCookie('refresh_token', { path: '/' });
+    throw new UnauthorizedException('No refresh token');
+  }
+
+  try {
     const { access_token } = await this.authService.refreshTokenContribuyente(refreshToken);
 
     res.cookie('access_token', access_token, {
@@ -145,10 +177,18 @@ export class AuthController {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 15 * 60 * 1000,
+      path: '/',
     });
 
     return { message: 'Access token refreshed' };
+  } catch (error) {
+    // Token inválido → limpiar las cookies huérfanas
+    res.clearCookie('access_token', { path: '/' });
+    res.clearCookie('refresh_token', { path: '/' });
+    throw new UnauthorizedException('Invalid refresh token');
   }
+  }
+  
 
   // [C-07] Cierra sesión del usuario municipal: borra cookies y elimina el refresh_token de la DB.
   // Llama a → [S-09] AuthService.logout
@@ -192,5 +232,18 @@ export class AuthController {
   @Get('profile')
   getProfile(@Request() req) {
     return req.user;
+  }
+
+ @Public()
+  @Post('forgot-password')
+  async forgotPassword(@Body() { email, userType }: ForgotPasswordDto) {
+    await this.authService.forgotPassword(email, userType);
+    return { message: 'Si el correo existe, recibirás un enlace para restablecer tu contraseña.' };
+  }
+ @Public()
+  @Post('reset-password')
+  async resetPassword(@Body() { email, token, newPassword, userType }: ResetPasswordDto) {
+    await this.authService.resetPassword(email, token, newPassword, userType);
+    return { message: 'Contraseña actualizada correctamente.' };
   }
 }

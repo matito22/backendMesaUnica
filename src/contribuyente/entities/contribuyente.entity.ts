@@ -42,4 +42,11 @@ export class Contribuyente {
     @Column({ name:"current_hashed_refresh_token",type: 'varchar', length: 500, nullable: true })
     currentHashedRefreshToken: string | null;
 
+
+    @Column({ type: 'varchar', length: 255, nullable: true, default: null })
+    reset_password_token: string | null;
+
+    @Column({ type: 'datetime', nullable: true, default: null })
+    reset_password_expires: Date | null;
+
 }

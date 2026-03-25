@@ -26,6 +26,8 @@ CREATE TABLE `usuario_municipal` (
   `rol` ENUM('ADMIN', 'MESA_ENTRADA', 'REVISOR') NOT NULL,
   `activo` tinyint(1) DEFAULT 1,
   `current_hashed_refresh_token` varchar(500) DEFAULT NULL,
+  `reset_password_token` varchar(255) DEFAULT NULL,
+  `reset_password_expires` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id_usuario`),
   UNIQUE KEY `uk_usuario_email` (`email`),
   CONSTRAINT `fk_usuario_sector` FOREIGN KEY (`id_sector`) REFERENCES `sector_municipal` (`id_sector`)

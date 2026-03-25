@@ -25,14 +25,15 @@ export class DocumentoController {
   @Post('subir/:idExpediente')
   @UseInterceptors(UploadDinamicoInterceptor)
   async subir(
-    @Param('idExpediente') idExpediente: number,
+    @Param('idExpediente',ParseIntPipe) idExpediente: number,
     @UploadedFile() file: Express.Multer.File,
     @Body() dto: SubirDocumentoDto,
   ) {
+
     if (!file) {
       throw new BadRequestException(`Se requiere un archivo. Tamaño máximo: ${MAX_TAMANIO_BYTES / 1024 / 1024} MB`);
     }
-    return this.documentoService.subirArchivo(dto, file, +idExpediente);
+    return this.documentoService.subirArchivo(dto, file, idExpediente);
   }
 
   // [C-21] Devuelve todos los documentos de un expediente.

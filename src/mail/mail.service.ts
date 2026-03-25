@@ -135,4 +135,6 @@ export class MailService {
   await client.append('Sent', rawMessage, ['\\Seen']); // \\Seen = marcar como leído
   await client.logout();
 }
+
+
 }

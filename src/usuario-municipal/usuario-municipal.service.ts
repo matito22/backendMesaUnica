@@ -1,11 +1,14 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { UpdateUsuarioMunicipalDto } from './dto/update-usuario-municipal.dto';
 import { Repository } from 'typeorm';
 import { UsuarioMunicipal } from './entities/usuario-municipal.entity';
 import { HandleService } from '../utils/handle.service';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
+
 import { InjectRepository } from '@nestjs/typeorm';
 import { SectorMunicipal } from 'src/sector-municipal/entities/sector-municipal.entity';
+import { MailService } from 'src/mail/mail.service';
 
 @Injectable()
 export class UsuarioMunicipalService extends HandleService {
@@ -14,8 +17,14 @@ export class UsuarioMunicipalService extends HandleService {
     @InjectRepository(UsuarioMunicipal)
     private userRepository: Repository<UsuarioMunicipal>,
     @InjectRepository(SectorMunicipal)
-    private sectorMunicipalRepository: Repository<SectorMunicipal>
+    private sectorMunicipalRepository: Repository<SectorMunicipal>,
+
+    private readonly mailService: MailService
+    
+
+    
   ) {
+  
     super();
   }
 
@@ -127,5 +136,24 @@ export class UsuarioMunicipalService extends HandleService {
         usuario.activationToken = null; // Invalida el link de activación
         await this.save(usuario);
       }
+
+
+    // Seteamos el token de reset
+async setResetPasswordToken(idUsuario: number, hashedToken: string, expires: Date): Promise<void> {
+  await this.userRepository.update(idUsuario, {
+    reset_password_token: hashedToken,
+    reset_password_expires: expires,
+  });
+}
+
+// Limpiamos el token después de usarlo
+async clearResetPasswordToken(idUsuario: number, hashedPassword: string): Promise<void> {
+  await this.userRepository.update(idUsuario, {
+    password: hashedPassword,
+    reset_password_token: null,
+    reset_password_expires: null,
+  });
+}
+
    
 }

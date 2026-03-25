@@ -125,4 +125,23 @@ export class ContribuyenteService extends HandleService {
     existingContribuyente = this.handleException(existingContribuyente, NotFoundException, `Contribuyente with ID ${idContribuyente} not found`);
     return this.contribuyenteRepository.remove(existingContribuyente);
   }
+
+  async findByEmail(email: string): Promise<Contribuyente | null> {
+  return this.contribuyenteRepository.findOneBy({ email });
+}
+
+async setResetPasswordToken(idContribuyente: number, hashedToken: string, expires: Date): Promise<void> {
+  await this.contribuyenteRepository.update(idContribuyente, {
+    reset_password_token: hashedToken,
+    reset_password_expires: expires,
+  });
+}
+
+async clearResetPasswordToken(idContribuyente: number, hashedPassword: string): Promise<void> {
+  await this.contribuyenteRepository.update(idContribuyente, {
+    password: hashedPassword,
+    reset_password_token: null,
+    reset_password_expires: null,
+  });
+}
 }

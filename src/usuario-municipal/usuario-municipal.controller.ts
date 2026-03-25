@@ -4,6 +4,7 @@ import { CreateUsuarioMunicipalDto } from './dto/create-usuario-municipal.dto';
 import { UpdateUsuarioMunicipalDto } from './dto/update-usuario-municipal.dto';
 import { UsuarioMunicipal } from './entities/usuario-municipal.entity';
 
+
 // El REGISTRO de usuarios municipales se hace desde AuthController [C-01], no desde acá.
 
 @Controller('usuario-municipal')
@@ -32,6 +33,8 @@ export class UsuarioMunicipalController {
   getUsuarioBySlug(@Param('slug') slug: string): Promise<UsuarioMunicipal | null> {
     return this.usuarioMunicipalService.findBySlug(slug);
   }
+
+
 
  
 

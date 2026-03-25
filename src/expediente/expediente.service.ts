@@ -260,6 +260,10 @@ async cambiarEstado(cambiarEstadoDto: CambiarEstadoDto) {
   });
   if (!expediente) throw new NotFoundException('Expediente no encontrado');
 
+   if (expediente.estado === EstadoExpediente.FINALIZADO) {
+      expediente.fechaFinalizacion = new Date();
+    }
+
   expediente.estado = this.calcularEstadoExpediente(expediente.documentos);
   return this.expedienteRepository.save(expediente);
 }

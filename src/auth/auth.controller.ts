@@ -66,7 +66,15 @@ export class AuthController {
       (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() ??
       req.socket.remoteAddress ?? '';
 
-    if (!clientIp.startsWith('10.10')) {
+    /*if (!clientIp.startsWith('10.10')) {
+      throw new ForbiddenException('Access restricted to municipal network');
+    }*/
+
+    if (
+      !clientIp.startsWith('10.10') &&
+      clientIp !== '127.0.0.1' &&
+      clientIp !== '::1'
+    ) {
       throw new ForbiddenException('Access restricted to municipal network');
     }
 
@@ -231,6 +239,7 @@ async refresh(@Req() req, @Res({ passthrough: true }) res: Response) {
   @UseGuards(RolesGuard)
   @Get('profile')
   getProfile(@Request() req) {
+
     return req.user;
   }
 

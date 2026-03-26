@@ -112,6 +112,25 @@ export class ExpedienteService extends HandleService {
     return { data, total };
   }
 
+  async findExpedientesFinalizados({page,limit}:{page:number,limit:number}): Promise<{ data: Expediente[]; total: number }> {
+    //El skip es el que marca desde donde tiene que empezar a mostrar
+     const skip = (page-1)*limit;
+    const [data, total] = await this.expedienteRepository.findAndCount({
+      relations: ['contribuyente', 'tipoExpediente', 'expedientePadre'],
+      where: [
+        { estado: EstadoExpediente.FINALIZADO }
+      ],
+      take: limit,
+      skip: skip,
+      order: { fechaCreacion: 'DESC' }
+    });
+
+    return { data, total };
+  }
+
+
+ 
+
   // [S-19] Carga el expediente con todas sus relaciones para la vista de detalle.
   async findOne(idExpediente: number): Promise<Expediente> {
     const expediente = await this.expedienteRepository.findOne({
@@ -260,9 +279,16 @@ async cambiarEstado(cambiarEstadoDto: CambiarEstadoDto) {
   });
   if (!expediente) throw new NotFoundException('Expediente no encontrado');
 
-   if (expediente.estado === EstadoExpediente.FINALIZADO) {
-      expediente.fechaFinalizacion = new Date();
-    }
+   const estadoAnterior = expediente.estado;
+
+  const nuevoEstado = this.calcularEstadoExpediente(expediente.documentos);
+ // SOLO cuando cambia a FINALIZADO
+  if (
+    estadoAnterior !== EstadoExpediente.FINALIZADO &&
+    nuevoEstado === EstadoExpediente.FINALIZADO
+  ) {
+    expediente.fechaFinalizacion = new Date();
+  }
 
   expediente.estado = this.calcularEstadoExpediente(expediente.documentos);
   return this.expedienteRepository.save(expediente);

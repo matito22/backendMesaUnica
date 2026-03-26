@@ -21,6 +21,8 @@ import { RequisitoTipoExpedienteModule } from './requisito-tipo-expediente/requi
 import { MailModule } from './mail/mail.module';
 import { join } from 'path';
 import { DatosCatastralesModule } from './datos-catastrales/datos-catastrales.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { TasksModule } from './tasks/tasks.module';
 
 
 @Module({
@@ -40,7 +42,9 @@ import { DatosCatastralesModule } from './datos-catastrales/datos-catastrales.mo
     ,DocumentoModule
     ,ContribuyenteModule
     ,ExpedienteModule
-    ,MensajeModule, TipoExpedienteModule, RequisitoTipoExpedienteModule, MailModule,DatosCatastralesModule
+    ,MensajeModule, TipoExpedienteModule, RequisitoTipoExpedienteModule, MailModule,DatosCatastralesModule,
+    ScheduleModule.forRoot(),
+    TasksModule
   ],
   controllers: [AppController],
   providers: [AppService,AppConfigService,

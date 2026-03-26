@@ -9,6 +9,7 @@ import { TipoDocumento } from 'src/tipo-documento/entities/tipo-documento.entity
 import { UsuarioMunicipal } from 'src/usuario-municipal/entities/usuario-municipal.entity';
 import { HistorialDocumento } from 'src/historial-documento/entities/historial-documento.entity';
 import { ExpedienteModule } from 'src/expediente/expediente.module';
+import { TasksModule } from 'src/tasks/tasks.module';
 
 @Module({
   imports: [
@@ -17,7 +18,8 @@ import { ExpedienteModule } from 'src/expediente/expediente.module';
       Expediente,
       TipoDocumento,
       UsuarioMunicipal,
-      HistorialDocumento,
+      HistorialDocumento
+      
     ]),
     forwardRef(() => ExpedienteModule),  // Módulo, no entidad
     MulterModule.register({ dest: './uploads' }),

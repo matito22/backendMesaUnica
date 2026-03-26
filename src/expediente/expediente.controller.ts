@@ -42,6 +42,14 @@ export class ExpedienteController {
     });
   }
 
+  @Get('finalizados')
+  findExpedientesFinalizados(@Query('page') page = '1', @Query('limit') limit = '10') {
+    return this.expedienteService.findExpedientesFinalizados({
+      page: Math.max(1, parseInt(page, 10) || 1),
+      limit: Math.max(1, parseInt(limit, 10) || 10),
+    });
+  }
+
   // [C-13] Busca un expediente por su número GDE.
   // Llama a → [S-14] ExpedienteService.findByNumeroGde
   @Get('gde/:numeroGde')
@@ -83,7 +91,6 @@ export class ExpedienteController {
 
   @Get('slug/:slug')
   findBySlug(@Param('slug') slug: string) {
-    console.log(slug);
     return this.expedienteService.findBySlug(slug);
   }
 

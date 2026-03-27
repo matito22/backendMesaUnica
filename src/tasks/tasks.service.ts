@@ -21,7 +21,7 @@ export class TasksService {
    
   }
 
-  private readonly logger = new Logger(TasksService.name);
+private readonly logger = new Logger(TasksService.name);
 
 
 @Cron('0 0 1 * *')//Se ejecuta el primer dia del mes a las 00:00
@@ -41,7 +41,6 @@ async listarExpedientesFinalizadosYEliminarDocumentos() {
   for (const exp of expedientes) {
    for (const doc of exp.documentos ?? []) {
   if (!doc.rutaAlmacenamiento) {
-    this.logger.warn(`⚠️ Documento ${doc.idDocumento} sin ruta de almacenamiento`);
     continue;
   }
 
@@ -53,14 +52,14 @@ async listarExpedientesFinalizadosYEliminarDocumentos() {
 
     // 1. Intentar borrar el archivo físico
     await fs.unlink(filePath);
-    this.logger.debug(`🗑️ Archivo eliminado: ${filePath}`);
+
 
   } catch (err: any) {
     if (err.code === 'ENOENT') {
       // El archivo ya no existe físicamente, igual hay que limpiar la DB
-      this.logger.warn(`⚠️ Archivo no encontrado (ya fue eliminado?): ${doc.rutaAlmacenamiento}`);
+
     } else {
-      this.logger.error(`❌ Error al eliminar archivo ${doc.rutaAlmacenamiento}: ${err.message}`);
+     
       continue; // Si es otro error, no eliminar el registro de DB
     }
   }
@@ -70,7 +69,7 @@ async listarExpedientesFinalizadosYEliminarDocumentos() {
     await this.documentoRepository.delete(doc.idDocumento);
     this.logger.debug(`🗑️ Documento ${doc.idDocumento} eliminado de la DB`);
   } catch (err: any) {
-    this.logger.error(`❌ Error al eliminar documento ${doc.idDocumento} de la DB: ${err.message}`);
+
   }
 }
 }

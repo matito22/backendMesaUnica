@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { UsuarioMunicipalService } from './usuario-municipal.service';
 import { UsuarioMunicipalController } from './usuario-municipal.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -9,7 +9,7 @@ import { MailModule } from 'src/mail/mail.module';
 
 
 @Module({
-  imports: [TypeOrmModule.forFeature([UsuarioMunicipal,SectorMunicipal]),MailModule],
+  imports: [TypeOrmModule.forFeature([UsuarioMunicipal,SectorMunicipal])],
   controllers: [UsuarioMunicipalController],
   providers: [UsuarioMunicipalService],
   exports: [UsuarioMunicipalService],

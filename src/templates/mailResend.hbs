@@ -56,6 +56,30 @@
       margin: 20px 0;
       border-radius: 4px;
     }
+
+    .btn-activate {
+      display: inline-block;
+      background-color: #0d6efd;
+      color: #ffffff !important;
+      text-decoration: none;
+      padding: 14px 32px;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: bold;
+      margin: 20px 0;
+    }
+
+    .btn-container {
+      text-align: center;
+      margin: 25px 0;
+    }
+
+    .link-fallback {
+      font-size: 12px;
+      color: #777777;
+      word-break: break-all;
+      margin-top: 10px;
+    }
   </style>
 </head>
 
@@ -68,16 +92,16 @@
 
     <!-- Content -->
     <div class="content">
-      <h2>Reenvío de correo de bienvenida</h2>
+      <h2>Reenvío de correo</h2>
 
       <p>
-        Le reenviamos el correo de bienvenida al
+        Le reenviamos el correo del
         <span class="highlight">Sistema de Gestión Municipal</span>.
       </p>
 
       <div class="info-box">
         <p>
-          Si el correo anterior no llegó a su bandeja de entrada, le pedimos que:
+          Si el correo anterior no llegó a su bandeja de entrada u olvidó su clave de acceso, le pedimos que:
         </p>
         <ul>
           <li>Revise su carpeta de spam o correo no deseado</li>
@@ -87,8 +111,20 @@
       </div>
 
       <p>
-        Durante los próximos pasos, es necesario que
-        <span class="highlight">active su cuenta y establezca una contraseña personal</span>.
+        Para activar su cuenta y establecer una contraseña personal,
+        haga clic en el siguiente botón:
+      </p>
+
+      <!-- === BOTÓN DE ACTIVACIÓN === -->
+      <div class="btn-container">
+        <a href="{{activationUrl}}" class="btn-activate" target="_blank">
+          Activar mi cuenta
+        </a>
+      </div>
+
+      <p class="link-fallback">
+        Si el botón no funciona, copie y pegue este enlace en su navegador:<br />
+        <a href="{{activationUrl}}">{{activationUrl}}</a>
       </p>
 
       <p>
@@ -97,7 +133,7 @@
 
       <p>
         Saludos cordiales,<br />
-        <strong>Municipalidad de Esteban Echeverria</strong>
+        <strong>Municipalidad de Esteban Echeverría</strong>
       </p>
     </div>
 

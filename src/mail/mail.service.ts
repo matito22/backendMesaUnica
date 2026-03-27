@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { ExpedienteService } from '../expediente/expediente.service';
 import MailComposer = require('nodemailer/lib/mail-composer');
 import { ImapFlow } from 'imapflow';
+import { UsuarioMunicipalService } from 'src/usuario-municipal/usuario-municipal.service';
 
 @Injectable()
 export class MailService {
@@ -12,6 +13,7 @@ export class MailService {
     private readonly mailService: MailerService,
     private readonly contribuyenteService: ContribuyenteService,
     private readonly expedienteService: ExpedienteService,
+    private readonly usuarioMunicipalService: UsuarioMunicipalService,
   ) {}
 
   // [S-41] Envía cualquier email usando las plantillas .hbs de /src/templates/.
@@ -36,7 +38,7 @@ export class MailService {
     idContribuyente: number,
     newEmail?: string,
     subject: string = 'Bienvenido al Sistema Municipal',
-    template: string = './mailContribuyente',
+    template: string = './mailResend',
   ): Promise<{ message: string, email: string }> {
     const contribuyente = await this.contribuyenteService.findOne(idContribuyente);
 
@@ -62,6 +64,41 @@ export class MailService {
 
     return { message: 'Email reenviado correctamente', email: emailToUse };
   }
+
+
+   async resendMailUsuario(
+    idUsuario: number,
+    newEmail?: string,
+    subject: string = 'Bienvenido al Sistema Municipal',
+    template: string = './mailResend',
+  ): Promise<{ message: string, email: string }> {
+    const usuario = await this.usuarioMunicipalService.findOne(idUsuario);
+
+    if (!usuario) throw new NotFoundException(`Usuario with ID ${idUsuario} not found`);
+
+    let emailToUse = newEmail || usuario.email; // Usa el nuevo email si se proporcionó, si no el existente
+
+    if (!emailToUse) throw new BadRequestException('El contribuyente no tiene un email registrado y no se proporcionó uno nuevo');
+
+    if (newEmail && newEmail !== usuario.email) {
+      usuario.email = newEmail; // Actualizamos el email si fue corregido
+      await this.usuarioMunicipalService.save(usuario);
+    }
+
+    if (!usuario.activationToken) {
+      usuario.activationToken = uuidv4(); // Regeneramos el token si ya fue consumido
+      await this.usuarioMunicipalService.save(usuario);
+    }
+
+    const activationUrl = `${process.env.CORS_ORIGIN}/activar?id=${usuario.idUsuario}&code=${usuario.activationToken}`;
+
+    await this.sendMail(emailToUse, subject, template, { nombre: usuario.nombre, activationUrl });
+
+    return { message: 'Email reenviado correctamente', email: emailToUse };
+  }
+
+
+
 
 
    // [S-43] Envía el correo de corrección de documento.
@@ -124,6 +161,7 @@ export class MailService {
   const client = new ImapFlow({
     host: process.env.MAIL_HOST!,
     port: 993,
+    logger: false, 
     secure: true,
     auth: {
       user: process.env.MAIL_USER!,

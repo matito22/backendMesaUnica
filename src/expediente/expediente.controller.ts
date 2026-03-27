@@ -41,10 +41,14 @@ export class ExpedienteController {
       limit: Math.max(1, parseInt(limit, 10) || 10),
     });
   }
-
+  
   @Get('finalizados')
-  findExpedientesFinalizados(@Query('page') page = '1', @Query('limit') limit = '10') {
-    return this.expedienteService.findExpedientesFinalizados({
+  @Roles(RolUser.REVISOR)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  findExpedientesFinalizados(@Request() req,@Query('page') page = '1', @Query('limit') limit = '10') {
+    const idSector: number = req.user.idSector;
+
+    return this.expedienteService.findExpedientesFinalizados(idSector,{
       page: Math.max(1, parseInt(page, 10) || 1),
       limit: Math.max(1, parseInt(limit, 10) || 10),
     });

@@ -3,6 +3,7 @@ import { MailDto } from './dto/mail.dto';
 import { ResendMailDto } from './dto/resend-mail.dto';
 import { MailService } from './mail.service';
 import { CorreccionDocumentoDto } from './dto/correccion-documento.dto';
+import { ResendMailUsuarioDto } from './dto/resend-mail-usuario.dto';
 
 
 @Controller('mail')
@@ -33,6 +34,17 @@ export class MailController {
       resendMailDto.subject,
     );
   }
+
+    @Post('resend-email/usuario')
+  async resendMailUsuario(@Body() resendMailUsuarioDto: ResendMailUsuarioDto): Promise<{ message: string, email: string }> {
+    return await this.mailService.resendMailUsuario(
+      resendMailUsuarioDto.idUsuario,
+      resendMailUsuarioDto.newEmail,
+      resendMailUsuarioDto.subject,
+    );
+  }
+
+
 
    @Post('correccion-documento')
    async correccionDocumento(

@@ -112,13 +112,13 @@ export class ExpedienteService extends HandleService {
     return { data, total };
   }
 
-  async findExpedientesFinalizados({page,limit}:{page:number,limit:number}): Promise<{ data: Expediente[]; total: number }> {
+  async findExpedientesFinalizados(sector:number,{page,limit}:{page:number,limit:number}): Promise<{ data: Expediente[]; total: number }> {
     //El skip es el que marca desde donde tiene que empezar a mostrar
      const skip = (page-1)*limit;
     const [data, total] = await this.expedienteRepository.findAndCount({
       relations: ['contribuyente', 'tipoExpediente', 'expedientePadre'],
       where: [
-        { estado: EstadoExpediente.FINALIZADO }
+        { estado: EstadoExpediente.FINALIZADO , tipoExpediente: { sectorResponsable: { idSector: sector } } }
       ],
       take: limit,
       skip: skip,

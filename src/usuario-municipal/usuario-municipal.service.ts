@@ -19,7 +19,6 @@ export class UsuarioMunicipalService extends HandleService {
     @InjectRepository(SectorMunicipal)
     private sectorMunicipalRepository: Repository<SectorMunicipal>,
 
-    private readonly mailService: MailService
     
 
     

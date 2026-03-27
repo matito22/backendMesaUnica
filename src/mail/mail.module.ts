@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
@@ -38,7 +38,8 @@ import { UsuarioMunicipalModule } from 'src/usuario-municipal/usuario-municipal.
             inject: [ConfigService],
         }),
         ContribuyenteModule,
-        ExpedienteModule
+        ExpedienteModule,
+        forwardRef(() => UsuarioMunicipalModule),
 
     ],
   providers: [MailService],

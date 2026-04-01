@@ -43,6 +43,8 @@ export class ContribuyenteService extends HandleService {
     return this.contribuyenteRepository.findOneBy({ dni });
   }
 
+ 
+
     async findBySlug(slug: string): Promise<Contribuyente | null> {
       const user = await this.contribuyenteRepository.findOne({
         where: { slug },

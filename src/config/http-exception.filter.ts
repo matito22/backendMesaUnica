@@ -9,7 +9,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     //ArgumentsHost proporciona acceso al contexto de la petición(request,response)
     //HttpException clase base para todas las excepciones HTTP en NestJS(404,403,etc)
   catch(exception: HttpException, host: ArgumentsHost) {
-    //Request representa la petición que hizo el cliente al servidor y Response representa la respuesta que el servidor envía al cliente.
+
     const ctx = host.switchToHttp();//Extraemos el contexto HTTP del ArgumentsHost.
     const response = ctx.getResponse<Response>();//Obtenemos el objeto de respuesta HTTP.(status,json,etc)
     const request = ctx.getRequest<Request>();//Obtenemos el objeto de solicitud HTTP.(url,method,headers,etc)

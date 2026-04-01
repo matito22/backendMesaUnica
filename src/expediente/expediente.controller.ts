@@ -63,12 +63,14 @@ export class ExpedienteController {
 
   // [C-14] Devuelve todos los expedientes de un contribuyente.
   // Llama a → [S-15] ExpedienteService.findByContribuyente
-  @Get('contribuyente/:idContribuyente')
+  @Get('contribuyente/mis-expedientes')  // sin :idContribuyente en la ruta
+  @UseGuards(JwtAuthGuard)
   findByContribuyente(
-    @Param('idContribuyente', ParseIntPipe) idContribuyente: number,
+    @Request() req,
     @Query('page') page = '1',
     @Query('limit') limit = '10',
   ) {
+    const idContribuyente = req.user.userId; // ← del JWT validado
     return this.expedienteService.findByContribuyente(idContribuyente, {
       page: Math.max(1, parseInt(page, 10) || 1),
       limit: Math.max(1, parseInt(limit, 10) || 10),

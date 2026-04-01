@@ -30,6 +30,11 @@ export class ContribuyenteController {
     return this.contribuyenteService.findBySlug(slug);
   }
 
+  @Get('email/:email')
+  getUsuarioByEmail(@Param('email') email: string): Promise<Contribuyente | null> {
+    return this.contribuyenteService.findByEmail(email);
+  }
+
   // [C-28] Devuelve todos los contribuyentes.
   // Llama a → [S-29] ContribuyenteService.findAll
   @Get()

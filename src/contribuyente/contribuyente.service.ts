@@ -146,4 +146,8 @@ async clearResetPasswordToken(idContribuyente: number, hashedPassword: string): 
     reset_password_expires: null,
   });
 }
+
+findByResetToken(hashedToken: string) {
+  return this.contribuyenteRepository.findOne({ where: { reset_password_token: hashedToken } });
+}
 }

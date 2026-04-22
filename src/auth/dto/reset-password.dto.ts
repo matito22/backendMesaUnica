@@ -1,8 +1,6 @@
-import { IsEmail, IsEnum, IsString, MinLength } from "class-validator";
+import {IsEnum, IsString, MinLength } from "class-validator";
 
 export class ResetPasswordDto {
-  @IsEmail()
-  email: string;
 
   @IsString()
   token: string;

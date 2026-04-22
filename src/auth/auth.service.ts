@@ -288,52 +288,49 @@ export class AuthService extends HandleService {
     await this.contribuyenteService.removeRefreshToken(idContribuyente);
   }
 
+  // Helper para hashear el token con SHA-256
+private hashToken(plainToken: string): string {
+  return crypto.createHash('sha256').update(plainToken).digest('hex');
+}
 
 async forgotPassword(email: string, userType: 'municipal' | 'contribuyente'): Promise<void> {
-
   const plainToken = crypto.randomBytes(32).toString('hex');
-  const hashedToken = await bcrypt.hash(plainToken, 10);
+  const hashedToken = this.hashToken(plainToken); // ✅ SHA-256 en lugar de bcrypt
   const expires = new Date(Date.now() + 30 * 60 * 1000);
 
   if (userType === 'municipal') {
     const user = await this.usuarioMunicipalService.findByEmail(email);
     if (!user) return;
     await this.usuarioMunicipalService.setResetPasswordToken(user.idUsuario, hashedToken, expires);
-    const resetLink = `${process.env.CORS_ORIGIN}/reset-password?token=${plainToken}&email=${email}&type=${userType}`;
+    // ✅ Sin email en la URL
+    const resetLink = `${process.env.CORS_ORIGIN}/reset-password?token=${plainToken}&type=${userType}`;
     await this.mailService.sendMail(user.email, 'Recuperación de contraseña', './resetPassword', { nombre: user.nombre, resetUrl: resetLink });
 
   } else {
     const user = await this.contribuyenteService.findByEmail(email);
     if (!user) return;
     await this.contribuyenteService.setResetPasswordToken(user.idContribuyente, hashedToken, expires);
-    const resetLink = `${process.env.CORS_ORIGIN}/reset-password?token=${plainToken}&email=${email}&type=${userType}`;
+    const resetLink = `${process.env.CORS_ORIGIN}/reset-password?token=${plainToken}&type=${userType}`;
     await this.mailService.sendMail(user.email, 'Recuperación de contraseña', './resetPassword', { nombre: user.nombre, resetUrl: resetLink });
   }
 }
 
-async resetPassword(
-  email: string,
-  plainToken: string,
-  newPassword: string,
-  userType: 'municipal' | 'contribuyente'
-): Promise<void> {
+async resetPassword( plainToken: string,    newPassword: string,userType: 'municipal' | 'contribuyente'): Promise<void> {
 
+  const hashedToken = this.hashToken(plainToken); // ✅ Hashea para buscar en BD
   const hashedPassword = await bcrypt.hash(newPassword, 10);
 
   if (userType === 'municipal') {
-    const user = await this.usuarioMunicipalService.findByEmail(email);
+    // ✅ Busca por token en lugar de por email
+    const user = await this.usuarioMunicipalService.findByResetToken(hashedToken);
     if (!user?.reset_password_token || !user?.reset_password_expires) throw new BadRequestException('Token inválido o expirado');
     if (new Date() > user.reset_password_expires) throw new BadRequestException('El token ha expirado, solicitá uno nuevo');
-    const isValid = await bcrypt.compare(plainToken, user.reset_password_token);
-    if (!isValid) throw new BadRequestException('Token inválido o expirado');
     await this.usuarioMunicipalService.clearResetPasswordToken(user.idUsuario, hashedPassword);
 
   } else {
-    const user = await this.contribuyenteService.findByEmail(email);
+    const user = await this.contribuyenteService.findByResetToken(hashedToken);
     if (!user?.reset_password_token || !user?.reset_password_expires) throw new BadRequestException('Token inválido o expirado');
     if (new Date() > user.reset_password_expires) throw new BadRequestException('El token ha expirado, solicitá uno nuevo');
-    const isValid = await bcrypt.compare(plainToken, user.reset_password_token);
-    if (!isValid) throw new BadRequestException('Token inválido o expirado');
     await this.contribuyenteService.clearResetPasswordToken(user.idContribuyente, hashedPassword);
   }
 }

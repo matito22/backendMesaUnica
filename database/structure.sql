@@ -216,7 +216,7 @@ INSERT INTO `tipo_documento` (`id_tipo_documento`, `id_sector_responsable`, `nom
 (12, 4, 'Inscripcion a ARBA'),
 -- Documentos para Prefactibilidad
 (13, 4, 'Certificado de Zonificacion (PDF Aprobado)'),
-(14, 1, 'Nota de solicitud al Intendente'),
+(14, 4, 'Nota de solicitud al Intendente'),
 (15, 4, 'Plano de Perquisicion / Forestacion'),
 (16, 4, 'Volumetria'),
 -- Documentos para Medio Ambiente
@@ -224,6 +224,11 @@ INSERT INTO `tipo_documento` (`id_tipo_documento`, `id_sector_responsable`, `nom
 (18, 5, 'Fotos del frente y arbolado'),
 (19, 5, 'Croquis de arbolado existente'),
 (20, 5, 'DDJJ Gestion de Residuos');
+(22, 5, 'Escaneo D.N.I. titular')
+
+
+--TODOS LOS DOCUMENTOS SE LES AGREGO CON ID 21 LA HOJA ESCANEADA DONDE SE DA DE ALTA EL EXPEDIENTE 
+
 
 -- Requisitos por Tipo de Expediente
 INSERT INTO `requisito_tipo_expediente` (`id_tipo_expediente`, `id_tipo_documento`, `es_obligatorio`) VALUES
@@ -232,8 +237,8 @@ INSERT INTO `requisito_tipo_expediente` (`id_tipo_expediente`, `id_tipo_document
 -- Requisitos Zonificacion
 (2, 7, 1), (2, 8, 1), (2, 9, 1), (2, 10, 1), (2, 11, 1), (2, 12, 0),
 -- Requisitos Prefactibilidad
-(3, 13, 1), (3, 14, 1), (3, 3, 1), (3, 11, 1), (3, 6, 1), (3, 15, 1), (3, 5, 0), (3, 16, 1),
+(3, 13, 1), (3, 14, 1), (3, 15, 1),(3, 16, 1),
 -- Requisitos Medio Ambiente
-(4, 17, 1), (4, 10, 1), (4, 3, 1), (4, 4, 1), (4, 18, 1), (4, 19, 1), (4, 20, 1);
+(4, 17, 1), (4, 18, 1), (4, 19, 1), (4, 20, 1),(4, 22, 1);
 
 SET FOREIGN_KEY_CHECKS = 1;

@@ -243,16 +243,19 @@ async refresh(@Req() req, @Res({ passthrough: true }) res: Response) {
     return req.user;
   }
 
+//Necesitamos el email para poder identificarlo
  @Public()
   @Post('forgot-password')
   async forgotPassword(@Body() { email, userType }: ForgotPasswordDto) {
     await this.authService.forgotPassword(email, userType);
     return { message: 'Si el correo existe, recibirás un enlace para restablecer tu contraseña.' };
   }
+
+//En este caso el usuario ya tiene token porque hizo clic en el enlace del email, entonces lo buscamos por token.
  @Public()
   @Post('reset-password')
-  async resetPassword(@Body() { email, token, newPassword, userType }: ResetPasswordDto) {
-    await this.authService.resetPassword(email, token, newPassword, userType);
+  async resetPassword(@Body() { token, newPassword, userType }: ResetPasswordDto) {
+    await this.authService.resetPassword(token, newPassword, userType);
     return { message: 'Contraseña actualizada correctamente.' };
   }
 }

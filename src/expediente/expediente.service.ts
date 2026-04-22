@@ -145,6 +145,7 @@ export class ExpedienteService extends HandleService {
         'documentos',
         'documentos.usuarioRevisor',
         'documentos.tipoDocumento',
+         'documentos.tipoDocumento.idSectorResponsable',
         'datosCatastrales',
         
       ],
@@ -166,6 +167,7 @@ export class ExpedienteService extends HandleService {
       'documentos',
       'documentos.usuarioRevisor',
       'documentos.tipoDocumento',
+      'documentos.tipoDocumento.idSectorResponsable',
       'datosCatastrales',
     ],
   });
@@ -193,21 +195,38 @@ export class ExpedienteService extends HandleService {
       return { data, total };
     }
 
-  // [S-16] Filtra los expedientes por el sector que los debe revisar.
-  async findBySectorResponsable(idSector: number,{ page, limit }: { page: number; limit: number }): Promise<{ data: Expediente[]; total: number }> {
-    const [data, total] = await this.expedienteRepository.findAndCount({
-      where: {
+async findBySectorResponsable(
+  idSector: number,
+  { page, limit }: { page: number; limit: number }
+): Promise<{ data: Expediente[]; total: number }> {
+  
+  const [data, total] = await this.expedienteRepository.findAndCount({
+    where: [
+      // Caso 1: es el sector responsable del expediente (ej: Obras Particulares)
+      {
         tipoExpediente: { sectorResponsable: { idSector } },
       },
-      relations: ['tipoExpediente', 'contribuyente', 'documentos', 'datosCatastrales'],
-      take: limit,
-      skip: (page - 1) * limit,
-      order: { fechaCreacion: 'DESC' },
-    });
+      // Caso 2: tiene documentos que le corresponden revisar (ej: Catastro en Carpeta de Obra)
+      {
+        documentos: { tipoDocumento: { idSectorResponsable: { idSector } } },
+      },
+    ],
+    relations: [
+      'tipoExpediente',
+      'tipoExpediente.sectorResponsable',
+      'contribuyente',
+      'documentos',
+      'documentos.tipoDocumento',
+      'documentos.tipoDocumento.idSectorResponsable',
+      'datosCatastrales',
+    ],
+    take: limit,
+    skip: (page - 1) * limit,
+    order: { fechaCreacion: 'DESC' },
+  });
 
-    return { data, total };
-  }
-
+  return { data, total };
+}
   // [S-18] Actualiza los campos del expediente. Verifica duplicado de GDE solo si cambió.
   async update(id: number, updateExpedienteDto: UpdateExpedienteDto): Promise<Expediente> {
     let existingExpediente = await this.expedienteRepository.findOneBy({ idExpediente: id });

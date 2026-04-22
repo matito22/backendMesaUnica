@@ -1,11 +1,12 @@
 import { MailerService } from '@nestjs-modules/mailer';
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { ContribuyenteService } from '../contribuyente/contribuyente.service';
 import { v4 as uuidv4 } from 'uuid';
 import { ExpedienteService } from '../expediente/expediente.service';
 import MailComposer = require('nodemailer/lib/mail-composer');
 import { ImapFlow } from 'imapflow';
 import { UsuarioMunicipalService } from 'src/usuario-municipal/usuario-municipal.service';
+import { QueryFailedError } from 'typeorm';
 
 @Injectable()
 export class MailService {
@@ -35,70 +36,85 @@ export class MailService {
   // [S-42] Reenvía el email de activación. Actualiza el email si se provee uno nuevo.
   // Si el activationToken fue consumido, genera uno nuevo antes de enviar.
   async resendMail(
-    idContribuyente: number,
-    newEmail?: string,
-    subject: string = 'Bienvenido al Sistema Municipal',
-    template: string = './mailResend',
-  ): Promise<{ message: string, email: string }> {
-    const contribuyente = await this.contribuyenteService.findOne(idContribuyente);
+  idContribuyente: number,
+  newEmail?: string,
+  subject: string = 'Bienvenido al Sistema Municipal',
+  template: string = './mailResend',
+): Promise<{ message: string, email: string }> {
+  const contribuyente = await this.contribuyenteService.findOne(idContribuyente);
 
-    if (!contribuyente) throw new NotFoundException(`Contribuyente with ID ${idContribuyente} not found`);
+  if (!contribuyente) throw new NotFoundException(`Contribuyente with ID ${idContribuyente} not found`);
 
-    let emailToUse = newEmail || contribuyente.email; // Usa el nuevo email si se proporcionó, si no el existente
 
-    if (!emailToUse) throw new BadRequestException('El contribuyente no tiene un email registrado y no se proporcionó uno nuevo');
+  if (contribuyente.activo) throw new ConflictException('El contribuyente ya tiene su cuenta activa.');
 
-    if (newEmail && newEmail !== contribuyente.email) {
-      contribuyente.email = newEmail; // Actualizamos el email si fue corregido
+  let emailToUse = newEmail || contribuyente.email;
+
+  if (!emailToUse) throw new BadRequestException('El contribuyente no tiene un email registrado y no se proporcionó uno nuevo');
+
+  if (newEmail && newEmail !== contribuyente.email) {
+    contribuyente.email = newEmail;
+    try {
       await this.contribuyenteService.save(contribuyente);
+    } catch (error) {
+      if (error instanceof QueryFailedError && (error as any).driverError?.code === 'ER_DUP_ENTRY') {
+        throw new ConflictException('El email ingresado ya está en uso por otro contribuyente.');
+      }
+      throw error;
     }
-
-    if (!contribuyente.activationToken) {
-      contribuyente.activationToken = uuidv4(); // Regeneramos el token si ya fue consumido
-      await this.contribuyenteService.save(contribuyente);
-    }
-
-    const activationUrl = `${process.env.CORS_ORIGIN}/activar?id=${contribuyente.idContribuyente}&code=${contribuyente.activationToken}`;
-
-    await this.sendMail(emailToUse, subject, template, { nombre: contribuyente.nombre, activationUrl });
-
-    return { message: 'Email reenviado correctamente', email: emailToUse };
   }
 
-
-   async resendMailUsuario(
-    idUsuario: number,
-    newEmail?: string,
-    subject: string = 'Bienvenido al Sistema Municipal',
-    template: string = './mailResend',
-  ): Promise<{ message: string, email: string }> {
-    const usuario = await this.usuarioMunicipalService.findOne(idUsuario);
-
-    if (!usuario) throw new NotFoundException(`Usuario with ID ${idUsuario} not found`);
-
-    let emailToUse = newEmail || usuario.email; // Usa el nuevo email si se proporcionó, si no el existente
-
-    if (!emailToUse) throw new BadRequestException('El contribuyente no tiene un email registrado y no se proporcionó uno nuevo');
-
-    if (newEmail && newEmail !== usuario.email) {
-      usuario.email = newEmail; // Actualizamos el email si fue corregido
-      await this.usuarioMunicipalService.save(usuario);
-    }
-
-    if (!usuario.activationToken) {
-      usuario.activationToken = uuidv4(); // Regeneramos el token si ya fue consumido
-      await this.usuarioMunicipalService.save(usuario);
-    }
-
-    const activationUrl = `${process.env.CORS_ORIGIN}/activar?id=${usuario.idUsuario}&code=${usuario.activationToken}`;
-
-    await this.sendMail(emailToUse, subject, template, { nombre: usuario.nombre, activationUrl });
-
-    return { message: 'Email reenviado correctamente', email: emailToUse };
+  if (!contribuyente.activationToken) {
+    contribuyente.activationToken = uuidv4();
+    await this.contribuyenteService.save(contribuyente);
   }
 
+  const activationUrl = `${process.env.CORS_ORIGIN}/activar?id=${contribuyente.idContribuyente}&code=${contribuyente.activationToken}`;
+  await this.sendMail(emailToUse, subject, template, { nombre: contribuyente.nombre, activationUrl });
+
+  return { message: 'Email reenviado correctamente', email: emailToUse };
+}
 
 
+async resendMailUsuario(
+  idUsuario: number,
+  newEmail?: string,
+  subject: string = 'Bienvenido al Sistema Municipal',
+  template: string = './mailResend',
+): Promise<{ message: string, email: string }> {
+  const usuario = await this.usuarioMunicipalService.findOne(idUsuario);
+
+  if (!usuario) throw new NotFoundException(`Usuario with ID ${idUsuario} not found`);
+
+  // ✅ Verificar que no esté activo
+  if (usuario.activo) throw new ConflictException('El usuario ya tiene su cuenta activa.');
+
+  let emailToUse = newEmail || usuario.email;
+
+  if (!emailToUse) throw new BadRequestException('El usuario no tiene un email registrado y no se proporcionó uno nuevo');
+
+  if (newEmail && newEmail !== usuario.email) {
+    usuario.email = newEmail;
+    try {
+      await this.usuarioMunicipalService.save(usuario);
+    } catch (error) {
+      if (error instanceof QueryFailedError && (error as any).driverError?.code === 'ER_DUP_ENTRY') {
+        throw new ConflictException('El email ingresado ya está en uso por otro usuario.');
+      }
+      throw error;
+    }
+  }
+
+  if (!usuario.activationToken) {
+    usuario.activationToken = uuidv4();
+    await this.usuarioMunicipalService.save(usuario);
+  }
+
+  const activationUrl = `${process.env.CORS_ORIGIN}/activar?id=${usuario.idUsuario}&code=${usuario.activationToken}`;
+  await this.sendMail(emailToUse, subject, template, { nombre: usuario.nombre, activationUrl });
+
+  return { message: 'Email reenviado correctamente', email: emailToUse };
+}
 
 
    // [S-43] Envía el correo de corrección de documento.

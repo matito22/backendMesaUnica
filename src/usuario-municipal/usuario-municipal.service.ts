@@ -154,5 +154,9 @@ async clearResetPasswordToken(idUsuario: number, hashedPassword: string): Promis
   });
 }
 
+findByResetToken(hashedToken: string) {
+  return this.userRepository.findOne({ where: { reset_password_token: hashedToken } });
+}
+
    
 }

@@ -14,6 +14,7 @@ import { Documento } from '../documento/entities/documento.entity';
 import { EstadoDocumento } from '../enum/estado-documento';
 import { CambiarEstadoDto } from './dto/cambiar-estado.dto';
 
+
 @Injectable()
 export class ExpedienteService extends HandleService {
 
@@ -72,7 +73,8 @@ export class ExpedienteService extends HandleService {
 
       // Buscamos los requisitos del tipo para crear los documentos pendientes automáticamente
       const requisitos = await requisitoRepository.find({
-        where: { tipoExpediente: { idTipoExpediente: dto.idTipoExpediente } },
+        where: { tipoExpediente: { idTipoExpediente: dto.idTipoExpediente },
+                esObligatorio: true },
         relations: ['tipoDocumento'],
       });
 
@@ -312,5 +314,8 @@ async cambiarEstado(cambiarEstadoDto: CambiarEstadoDto) {
   expediente.estado = this.calcularEstadoExpediente(expediente.documentos);
   return this.expedienteRepository.save(expediente);
 }
+
+
+
 
 }

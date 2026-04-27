@@ -14,6 +14,7 @@ import { Roles } from 'src/auth/roles.decorator';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/roles.guard';
 import { UploadDinamicoInterceptor } from 'src/utils/upload-dinamica.interceptor';
+import { DocumentoOpcionalDto } from './dto/documento-opcional.dto';
 
 @Controller('documentos')
 export class DocumentoController {
@@ -57,6 +58,23 @@ export class DocumentoController {
   async descargarBySlug(@Param('slug') slug: string, @Res() res: Response) {
     const rutaAbsoluta = await this.documentoService.obtenerRutaParaDescargaBySlug(slug);
     res.sendFile(rutaAbsoluta);
+  }
+
+  // [C-23] Devuelve los tipos de documentos opcionales para este tipo de expediente, filtrando los que ya están agregados.
+  // Llama a → [S-26] DocumentoService.getDocumentosOpcionales
+  @Get('expediente/:slug/opcionales')
+  async getDocumentosOpcionales(@Param('slug') slug: string) {
+    return await this.documentoService.getDocumentosOpcionales(slug);
+  }
+
+  // [C-24] Agrega un documento opcional a un expediente,creando el registro en la tabla Documento con estado PENDIENTE_CARGA.
+  // Llama a → [S-27] DocumentoService.agregarDocumentoOpcional
+  @Post('expediente/:slug/opcionales')
+  async agregarDocumentoOpcional(
+    @Param('slug') slug: string,
+    @Body() dto: DocumentoOpcionalDto,
+  ) {
+    return await this.documentoService.agregarDocumentoOpcional(slug, dto.idTipoDocumento);
   }
 
     // [C-24] El revisor aprueba o rechaza un documento. Solo REVISOR y ADMIN pueden hacerlo.

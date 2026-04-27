@@ -10,6 +10,7 @@ import { UsuarioMunicipal } from 'src/usuario-municipal/entities/usuario-municip
 import { HistorialDocumento } from 'src/historial-documento/entities/historial-documento.entity';
 import { ExpedienteModule } from 'src/expediente/expediente.module';
 import { TasksModule } from 'src/tasks/tasks.module';
+import { RequisitoTipoExpediente } from 'src/requisito-tipo-expediente/entities/requisito-tipo-expediente.entity';
 
 @Module({
   imports: [
@@ -18,7 +19,8 @@ import { TasksModule } from 'src/tasks/tasks.module';
       Expediente,
       TipoDocumento,
       UsuarioMunicipal,
-      HistorialDocumento
+      HistorialDocumento,
+      RequisitoTipoExpediente,
       
     ]),
     forwardRef(() => ExpedienteModule),  // Módulo, no entidad

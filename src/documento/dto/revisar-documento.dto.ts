@@ -5,10 +5,10 @@ import { EstadoDocumento } from '../../enum/estado-documento';
 
 //Este DTO se utiliza en el controlador de revisar documento
 export class RevisarDocumentoDto {
-  @IsEnum([EstadoDocumento.APROBADO, EstadoDocumento.PENDIENTE_RESUBIDA], {
-    message: 'El estado debe ser APROBADO o PENDIENTE_RESUBIDA',
+  @IsEnum([EstadoDocumento.APROBADO, EstadoDocumento.PENDIENTE_RESUBIDA,EstadoDocumento.SUBIDO_A_GDE], {
+    message: 'El estado debe ser APROBADO , PENDIENTE_RESUBIDA o SUBIDO_A_GDE',
   })
-  estado: EstadoDocumento.APROBADO | EstadoDocumento.PENDIENTE_RESUBIDA;
+  estado: EstadoDocumento.APROBADO | EstadoDocumento.PENDIENTE_RESUBIDA | EstadoDocumento.SUBIDO_A_GDE;
 
   @IsOptional()
   @IsString()

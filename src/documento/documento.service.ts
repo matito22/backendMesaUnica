@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { unlink } from 'fs/promises';
@@ -12,6 +12,7 @@ import { RevisarDocumentoDto } from './dto/revisar-documento.dto';
 import { UsuarioMunicipal } from 'src/usuario-municipal/entities/usuario-municipal.entity';
 import { HistorialDocumento } from 'src/historial-documento/entities/historial-documento.entity';
 import { ExpedienteService } from 'src/expediente/expediente.service';
+import { RequisitoTipoExpediente } from 'src/requisito-tipo-expediente/entities/requisito-tipo-expediente.entity';
 
 // Ciclo de vida de un documento:
 // PENDIENTE_CARGA → CARGADO → APROBADO
@@ -30,9 +31,13 @@ export class DocumentoService {
     private readonly usuarioRepository: Repository<UsuarioMunicipal>,
     @InjectRepository(HistorialDocumento)
     private readonly historialRepository: Repository<HistorialDocumento>,
+    @InjectRepository(RequisitoTipoExpediente)
+    private readonly requisitoRepository: Repository<RequisitoTipoExpediente>,
 
     private readonly expedienteService: ExpedienteService,
   ) {}
+
+
 
   // [S-21] Sube un archivo o reemplaza uno existente si está en estado permitido.
   // Solo permite resubida si el estado es PENDIENTE_CARGA o PENDIENTE_RESUBIDA.
@@ -170,7 +175,7 @@ export class DocumentoService {
   async findOneBySlug(slug: string): Promise<Documento> {
     const doc = await this.documentoRepository.findOne({
       where: { slug },
-      relations: ['expediente', 'tipoDocumento', 'usuarioRevisor'],
+      relations: ['expediente', 'tipoDocumento', 'usuarioRevisor','tipoDocumento.idSectorResponsable'],
     });
     if (!doc) throw new NotFoundException('Documento no encontrado');
     return doc;
@@ -193,4 +198,66 @@ export class DocumentoService {
       }
     }
   }
+
+// Devuelve los tipos de documentos opcionales para este tipo de expediente, filtrando los que ya están agregados.
+async getDocumentosOpcionales(slug: string): Promise<TipoDocumento[]> {
+  const expediente = await this.expedienteRepository.findOne({
+    where: { slug },
+    relations: ['tipoExpediente'],
+  });
+
+  if (!expediente) throw new NotFoundException('El expediente no existe');
+
+  const opcionales = await this.requisitoRepository.find({
+    where: {
+      tipoExpediente: { idTipoExpediente: expediente.tipoExpediente.idTipoExpediente },
+      esObligatorio: false,
+    },
+    relations: ['tipoDocumento'],
+  });
+
+  return opcionales.map(r => r.tipoDocumento);
+}
+
+ 
+//Agrega un documento opcional a un expediente,creando el registro en la tabla Documento con estado PENDIENTE_CARGA.
+async agregarDocumentoOpcional(slug: string, idTipoDocumento: number): Promise<Documento> {
+  const expediente = await this.expedienteRepository.findOne({
+    where: { slug },
+    relations: ['tipoExpediente'],
+  });
+
+  if (!expediente) throw new NotFoundException('El expediente no existe');
+
+  // Verificar si ya existe ese tipo de documento en el expediente
+  const yaExiste = await this.documentoRepository.findOne({
+    where: {
+      expediente: { idExpediente: expediente.idExpediente },
+      tipoDocumento: { idTipoDocumento },
+    },
+  });
+
+  if (yaExiste) throw new ConflictException('Este documento ya fue agregado al expediente');
+
+  const requisito = await this.requisitoRepository.findOne({
+    where: {
+      tipoExpediente: { idTipoExpediente: expediente.tipoExpediente.idTipoExpediente },
+      tipoDocumento: { idTipoDocumento },
+      esObligatorio: false,
+    },
+    relations: ['tipoDocumento'],
+  });
+
+  if (!requisito) throw new BadRequestException('Este documento no es válido para este tipo de expediente');
+
+  const documento = this.documentoRepository.create({
+    expediente,
+    tipoDocumento: requisito.tipoDocumento,
+    estado: EstadoDocumento.PENDIENTE_CARGA,
+    nombreArchivo: '',
+    rutaAlmacenamiento: '',
+  });
+
+  return await this.documentoRepository.save(documento);
+}
 }

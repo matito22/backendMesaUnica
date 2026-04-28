@@ -134,29 +134,31 @@ export class ExpedienteService extends HandleService {
  
 
   // [S-19] Carga el expediente con todas sus relaciones para la vista de detalle.
-  async findOne(idExpediente: number): Promise<Expediente> {
-    const expediente = await this.expedienteRepository.findOne({
-      where: { idExpediente },
-      relations: [
-        'contribuyente',
-        'tipoExpediente',
-        'tipoExpediente.requisitos',
-        'tipoExpediente.requisitos.tipoDocumento',
-        'tipoExpediente.sectorResponsable',
-        'expedientePadre',
-        'documentos',
-        'documentos.usuarioRevisor',
-        'documentos.tipoDocumento',
-         'documentos.tipoDocumento.idSectorResponsable',
-        'datosCatastrales',
-        
-      ],
-    });
-    return this.handleException(expediente, NotFoundException, `Expediente con ID ${idExpediente} no encontrado`);
-  }
+ async findOne(idExpediente: number): Promise<Expediente> {
+  const expediente = await this.expedienteRepository.findOne({
+    where: { idExpediente },
+    relations: [
+      'contribuyente',
+      'tipoExpediente',
+      'tipoExpediente.requisitos',
+      'tipoExpediente.requisitos.tipoDocumento',
+      'tipoExpediente.sectorResponsable',
+      'expedientePadre',
+      'documentos',
+      'documentos.usuarioRevisor',
+      'documentos.tipoDocumento',
+      'documentos.tipoDocumento.idSectorResponsable',
+      'datosCatastrales',
+    ],
+  });
+
+  const result = this.handleException(expediente, NotFoundException, `Expediente con ID ${idExpediente} no encontrado`);
+  result.documentos = result.documentos.filter(d => d.vigente);
+  return result;
+}
 
   //Busca por slug
-  async findBySlug(slug: string): Promise<Expediente> {
+async findBySlug(slug: string): Promise<Expediente> {
   const expediente = await this.expedienteRepository.findOne({
     where: { slug },
     relations: [
@@ -173,7 +175,10 @@ export class ExpedienteService extends HandleService {
       'datosCatastrales',
     ],
   });
-  return this.handleException(expediente, NotFoundException, 'Expediente no encontrado');
+
+  const result = this.handleException(expediente, NotFoundException, 'Expediente no encontrado');
+  result.documentos = result.documentos.filter(d => d.vigente);
+  return result;
 }
 
   // [S-14] Busca por número GDE.
@@ -292,7 +297,6 @@ private calcularEstadoExpediente(documentos: Documento[]): EstadoExpediente {
   // Caso intermedio: mix sin CARGADO (ej: PENDIENTE_CARGA + APROBADO)
   return EstadoExpediente.EN_PROGRESO;
 }
-
 async cambiarEstado(cambiarEstadoDto: CambiarEstadoDto) {
   const expediente = await this.expedienteRepository.findOne({
     where: { idExpediente: cambiarEstadoDto.idExpediente },
@@ -300,10 +304,12 @@ async cambiarEstado(cambiarEstadoDto: CambiarEstadoDto) {
   });
   if (!expediente) throw new NotFoundException('Expediente no encontrado');
 
-   const estadoAnterior = expediente.estado;
+  const estadoAnterior = expediente.estado;
 
-  const nuevoEstado = this.calcularEstadoExpediente(expediente.documentos);
- // SOLO cuando cambia a FINALIZADO
+  // Calcular estado solo con documentos vigentes
+  const documentosVigentes = expediente.documentos.filter(d => d.vigente);
+  const nuevoEstado = this.calcularEstadoExpediente(documentosVigentes);
+
   if (
     estadoAnterior !== EstadoExpediente.FINALIZADO &&
     nuevoEstado === EstadoExpediente.FINALIZADO
@@ -311,10 +317,9 @@ async cambiarEstado(cambiarEstadoDto: CambiarEstadoDto) {
     expediente.fechaFinalizacion = new Date();
   }
 
-  expediente.estado = this.calcularEstadoExpediente(expediente.documentos);
+  expediente.estado = nuevoEstado;
   return this.expedienteRepository.save(expediente);
 }
-
 
 
 

@@ -1,7 +1,8 @@
 import {
   Controller, Post, Get, Patch, Delete, Param, Body,
   UploadedFile, UseInterceptors, ParseIntPipe, Res,
-  HttpCode, HttpStatus, BadRequestException, Req, UseGuards, Request
+  HttpCode, HttpStatus, BadRequestException, Req, UseGuards, Request,
+  NotFoundException
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
@@ -15,6 +16,9 @@ import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/roles.guard';
 import { UploadDinamicoInterceptor } from 'src/utils/upload-dinamica.interceptor';
 import { DocumentoOpcionalDto } from './dto/documento-opcional.dto';
+import { existsSync } from 'fs';
+import * as path from 'path';
+
 
 @Controller('documentos')
 export class DocumentoController {
@@ -36,6 +40,18 @@ export class DocumentoController {
     }
     return this.documentoService.subirArchivo(dto, file, idExpediente);
   }
+
+@Patch('slug/:slug/solicitar-correccion')
+@UseInterceptors(UploadDinamicoInterceptor)
+async solicitarCorreccion( @Param('slug') slug: string,@UploadedFile() file: Express.Multer.File, @Body('observacion') observacion: string, @Request() req,) {
+
+  if (!observacion?.trim()) {
+    throw new BadRequestException('La observación es obligatoria para solicitar corrección');
+  }
+  const idUsuario: number = req.user.userId;
+  return this.documentoService.solicitarCorreccion(slug, observacion.trim(), idUsuario, file);
+}
+
 
   // [C-21] Devuelve todos los documentos de un expediente.
   // Llama a → [S-22] DocumentoService.findByExpediente
@@ -60,11 +76,26 @@ export class DocumentoController {
     res.sendFile(rutaAbsoluta);
   }
 
+  @Get('slug/:slug/descargar-correccion')
+async descargarCorreccion(@Param('slug') slug: string, @Res() res: Response) {
+  const documento = await this.documentoService.findOneBySlug(slug);
+  if (!documento.rutaCorreccion || !existsSync(documento.rutaCorreccion)) {
+    throw new NotFoundException('No hay archivo de corrección');
+  }
+  res.sendFile(path.resolve(documento.rutaCorreccion));
+}
+
   // [C-23] Devuelve los tipos de documentos opcionales para este tipo de expediente, filtrando los que ya están agregados.
   // Llama a → [S-26] DocumentoService.getDocumentosOpcionales
   @Get('expediente/:slug/opcionales')
   async getDocumentosOpcionales(@Param('slug') slug: string) {
     return await this.documentoService.getDocumentosOpcionales(slug);
+  }
+
+
+  @Get('expediente/:slug/versiones')
+  async obtenerVersiones(@Param('slug') slug: string) {
+    return await this.documentoService.obtenerHistorialDocumentos(slug);
   }
 
   // [C-24] Agrega un documento opcional a un expediente,creando el registro en la tabla Documento con estado PENDIENTE_CARGA.

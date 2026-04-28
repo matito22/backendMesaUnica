@@ -36,8 +36,8 @@ export class AuthController {
   // [C-01] Registra un usuario municipal. Solo ADMIN puede hacerlo.
   // Llama a → [S-01] AuthService.createMunicipal
   @UseGuards(JwtAuthGuard, RolesGuard)
-  // @Public() // ← Descomentar solo para crear el primer ADMIN. Volver a comentar después.
-  @Roles(RolUser.ADMIN)
+   @Public() // ← Descomentar solo para crear el primer ADMIN. Volver a comentar después.
+  //@Roles(RolUser.ADMIN)
   @Post('registrar/municipal')
   create(@Body() createUserDto: CreateUsuarioMunicipalDto) {
     return this.authService.createMunicipal(createUserDto);

@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Not, Repository } from 'typeorm';
 import { unlink } from 'fs/promises';
 import { existsSync } from 'fs';
 import { Documento } from './entities/documento.entity';
@@ -41,50 +41,80 @@ export class DocumentoService {
 
   // [S-21] Sube un archivo o reemplaza uno existente si está en estado permitido.
   // Solo permite resubida si el estado es PENDIENTE_CARGA o PENDIENTE_RESUBIDA.
-  async subirArchivo(dto: SubirDocumentoDto, file: Express.Multer.File,idExpediente: number): Promise<Documento> {
-    const expediente = await this.expedienteRepository.findOne({ where: { idExpediente: idExpediente } });
+
+  async subirArchivo(
+    dto: SubirDocumentoDto,
+    file: Express.Multer.File,
+    idExpediente: number,
+  ): Promise<Documento> {
+    const expediente = await this.expedienteRepository.findOne({
+      where: { idExpediente },
+    });
     if (!expediente) throw new NotFoundException('Expediente no encontrado');
 
-    const tipoDocumento = await this.tipoDocumentoRepository.findOne({ where: { idTipoDocumento: dto.idTipoDocumento } });
-    if (!tipoDocumento) throw new NotFoundException('Tipo de documento no encontrado');
+    const tipoDocumento = await this.tipoDocumentoRepository.findOne({
+      where: { idTipoDocumento: dto.idTipoDocumento },
+    });
+    if (!tipoDocumento)
+      throw new NotFoundException('Tipo de documento no encontrado');
 
-    // Verificamos si ya existe un documento de ese tipo en ese expediente
-    const existente = await this.documentoRepository.findOne({
+    const documentoVigente = await this.documentoRepository.findOne({
       where: {
-        expediente: { idExpediente: idExpediente },
+        expediente: { idExpediente },
         tipoDocumento: { idTipoDocumento: dto.idTipoDocumento },
+        vigente: true,
       },
     });
 
-    if (existente) {
-      const estadosQuePermiteResubida = [
+    if (documentoVigente) {
+      const estadosQuePermiteSubida = [
         EstadoDocumento.PENDIENTE_CARGA,
         EstadoDocumento.PENDIENTE_RESUBIDA,
       ];
 
-      if (!estadosQuePermiteResubida.includes(existente.estado)) {
+      if (!estadosQuePermiteSubida.includes(documentoVigente.estado)) {
         throw new BadRequestException(
-          `No se puede resubir el documento en estado "${existente.estado}". ` +
-          `Solo se permite en: ${estadosQuePermiteResubida.join(', ')}`,
+          `No se puede resubir el documento en estado "${documentoVigente.estado}". ` +
+          `Solo se permite en: ${estadosQuePermiteSubida.join(', ')}`,
         );
       }
 
-      await this.eliminarArchivoDisco(existente.rutaAlmacenamiento); // Borramos el archivo anterior del disco
+      // Si es PENDIENTE_CARGA, nunca tuvo archivo → actualizamos el mismo registro
+      if (documentoVigente.estado === EstadoDocumento.PENDIENTE_CARGA) {
+        documentoVigente.nombreArchivo      = file.originalname;
+        documentoVigente.rutaAlmacenamiento = file.path;
+        documentoVigente.tipoMime           = file.mimetype;
+        documentoVigente.pesoKb             = Math.ceil(file.size / 1024);
+        documentoVigente.estado             = EstadoDocumento.CARGADO;
+        documentoVigente.fechaUltimaCarga   = new Date();
+        documentoVigente.numeroVersion      = 1;
 
-      existente.nombreArchivo      = file.originalname;
-      existente.rutaAlmacenamiento = file.path;
-      existente.tipoMime           = file.mimetype;
-      existente.pesoKb             = Math.ceil(file.size / 1024);
-      existente.estado             = EstadoDocumento.CARGADO;
-      existente.fechaUltimaCarga   = new Date();
-      existente.observacionActual  = null; // Limpiamos la observación anterior del revisor
+        await this.expedienteService.cambiarEstado({ idExpediente });
+        return this.documentoRepository.save(documentoVigente);
+      }
 
-      await this.expedienteService.cambiarEstado({ idExpediente:idExpediente});
+      // Si es PENDIENTE_RESUBIDA, ya tuvo archivo → versionamos
+      documentoVigente.vigente = false;
+      await this.documentoRepository.save(documentoVigente);
 
-      return this.documentoRepository.save(existente);
+      const nuevo = this.documentoRepository.create({
+        nombreArchivo: file.originalname,
+        rutaAlmacenamiento: file.path,
+        tipoMime: file.mimetype,
+        pesoKb: Math.ceil(file.size / 1024),
+        estado: EstadoDocumento.CARGADO,
+        fechaUltimaCarga: new Date(),
+        numeroVersion: documentoVigente.numeroVersion + 1,
+        vigente: true,
+        expediente,
+        tipoDocumento,
+      });
 
+      await this.expedienteService.cambiarEstado({ idExpediente });
+      return this.documentoRepository.save(nuevo);
     }
 
+    // Sin documento existente → primera carga
     const nuevo = this.documentoRepository.create({
       nombreArchivo: file.originalname,
       rutaAlmacenamiento: file.path,
@@ -92,11 +122,12 @@ export class DocumentoService {
       pesoKb: Math.ceil(file.size / 1024),
       estado: EstadoDocumento.CARGADO,
       fechaUltimaCarga: new Date(),
+      numeroVersion: 1,
+      vigente: true,
       expediente,
       tipoDocumento,
     });
 
-   
     return this.documentoRepository.save(nuevo);
   }
 
@@ -172,6 +203,7 @@ export class DocumentoService {
     return doc;
   }
 
+  //Devuelve el documento con todas sus relaciones con slug en vez de id, para mostrar el detalle del documento.
   async findOneBySlug(slug: string): Promise<Documento> {
     const doc = await this.documentoRepository.findOne({
       where: { slug },
@@ -229,7 +261,7 @@ async agregarDocumentoOpcional(slug: string, idTipoDocumento: number): Promise<D
 
   if (!expediente) throw new NotFoundException('El expediente no existe');
 
-  // Verificar si ya existe ese tipo de documento en el expediente
+ 
   const yaExiste = await this.documentoRepository.findOne({
     where: {
       expediente: { idExpediente: expediente.idExpediente },
@@ -259,5 +291,67 @@ async agregarDocumentoOpcional(slug: string, idTipoDocumento: number): Promise<D
   });
 
   return await this.documentoRepository.save(documento);
+}
+
+//Devuelve el historial de documentos de un expediente, para mostrar el detalle del documento.
+async obtenerHistorialDocumentos(slug: string): Promise<Documento[]> {
+  const documento = await this.documentoRepository.findOne({
+    where: { slug },
+    relations: ['expediente', 'tipoDocumento'],
+  });
+  if (!documento) throw new NotFoundException('Documento no encontrado');
+
+  return this.documentoRepository.find({
+    where: {
+      expediente: { idExpediente: documento.expediente.idExpediente },
+      tipoDocumento: { idTipoDocumento: documento.tipoDocumento.idTipoDocumento },
+      vigente: false, 
+    },
+    relations: ['tipoDocumento', 'usuarioRevisor'],
+    order: { numeroVersion: 'DESC' },
+  });
+}
+//Se corrige un documento
+async solicitarCorreccion(slug: string,observacion: string,idUsuario: number,file?: Express.Multer.File,): Promise<Documento> {
+  const documento = await this.documentoRepository.findOne({
+    where: { slug },
+    relations: ['expediente', 'tipoDocumento'],
+  });
+  if (!documento) throw new NotFoundException('Documento no encontrado');
+
+  const estadoAnterior = documento.estado;
+  const usuarioRevisor = await this.usuarioRepository.findOne({ where: { idUsuario } });
+
+
+  documento.estado = EstadoDocumento.PENDIENTE_RESUBIDA;
+  documento.observacionActual = observacion;
+  documento.fechaRevision = new Date();
+  documento.usuarioRevisor = usuarioRevisor;
+
+  if (file) {
+    documento.nombreArchivoCorreccion = file.originalname;
+    documento.rutaCorreccion = file.path;
+    documento.tipoMimeCorreccion = file.mimetype;
+    documento.pesoKbCorreccion = Math.ceil(file.size / 1024);
+  }
+
+  await this.documentoRepository.save(documento);
+
+
+  const historial = this.historialRepository.create({
+    idDocumento: documento.idDocumento,
+    estadoAnterior,
+    estadoNuevo: EstadoDocumento.PENDIENTE_RESUBIDA,
+    observacion,
+    usuarioActor: usuarioRevisor,
+  });
+  await this.historialRepository.save(historial);
+
+ 
+  await this.expedienteService.cambiarEstado({
+    idExpediente: documento.expediente.idExpediente,
+  });
+
+  return documento;
 }
 }

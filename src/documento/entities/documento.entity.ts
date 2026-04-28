@@ -38,6 +38,24 @@ export class Documento {
     @Column({ name: 'observacion_actual', type: 'text', nullable: true })
     observacionActual: string | null;
 
+    @Column({ name:'es_version_vigente',type:'tinyint',width:1,default:true})
+    vigente:boolean;
+
+    @Column({ name:'numero_version',type:'int',default:true})
+    numeroVersion:number;
+
+    @Column({ name: 'nombre_archivo_correccion', type: 'varchar', length: 255, nullable: true })
+    nombreArchivoCorreccion: string;
+
+    @Column({ name: 'ruta_correccion', type: 'varchar', length: 500, nullable: true })
+    rutaCorreccion: string;
+
+    @Column({ name: 'tipo_mime_correccion', type: 'varchar', length: 50, nullable: true })
+    tipoMimeCorreccion: string;
+
+    @Column({ name: 'peso_kb_correccion', type: 'int', nullable: true })
+    pesoKbCorreccion: number;
+
 
     @ManyToOne(() => Expediente, (expediente) => expediente.documentos)
     @JoinColumn({ name: 'id_expediente' })
